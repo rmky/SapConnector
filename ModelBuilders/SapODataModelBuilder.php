@@ -27,7 +27,9 @@ class SapODataModelBuilder extends ODataModelBuilder
         $rows = $ds->getRows();
         foreach ($entity_nodes as $i => $entity) {
             $entitySet = $this->getEntitySetNode($entity);
-            $rows[$i]['LABEL'] = $entitySet->attr('sap:label');
+            if ($label = $entitySet->attr('sap:label')) {
+                $rows[$i]['LABEL'] = $label;
+            }
             
             if (! ($entitySet->attr('sap:updatable') === 'true' || $entitySet->attr('sap:creatable') === 'true' || $entitySet->attr('sap:deletable') === 'true')) {
                 // Allways set to false for some reason???
@@ -57,7 +59,9 @@ class SapODataModelBuilder extends ODataModelBuilder
         
         $rows = $ds->getRows();
         foreach ($property_nodes as $i => $property) {
-            $rows[$i]['LABEL'] = $property->getAttribute('sap:label');
+            if ($label = $property->getAttribute('sap:label')) {
+                $rows[$i]['LABEL'] = $label;
+            }
             $rows[$i]['FILTERABLEFLAG'] = ($property->getAttribute('sap:filterable') === 'true' ? 1 : 0);
             $rows[$i]['SORTABLEFLAG'] = ($property->getAttribute('sap:sortable') === 'true' ? 1 : 0);
             $rows[$i]['AGGREGATABLEFLAG'] = 0;
