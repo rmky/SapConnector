@@ -85,10 +85,14 @@ class SapODataModelBuilder extends ODataModelBuilder
             // is supported
             if (strtolower($property->getAttribute('sap:filterable')) !== 'false') {
                 $data_address_props['filter_remote'] = 1;
+            } else {
+                $data_address_props['filter_locally'] = 1;
             }
             
             if (strtolower($property->getAttribute('sap:sortable')) !== 'false') {
                 $data_address_props['sort_remote'] = 1;
+            } else {
+                $data_address_props['sort_locally'] = 1;
             }
             
             if (! empty($data_address_props)) {
