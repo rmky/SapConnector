@@ -1,0 +1,24 @@
+{
+    "name": "exface/SapConnector",
+    "require": {
+        "exface/core": "~0.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "\\exface\\SapConnector\\": ""
+        },
+        "exclude-from-classmap": [
+            "/Config/",
+            "/Translations/",
+            "/Model/"
+        ]
+    },
+    "extra": {
+        "app": {
+            "app_uid": "0x11e85942dc57e3ac99340205857feb80",
+            "app_alias": "exface.SapConnector",
+            "model_md5": "f0f6d951d142d4208ca77fe451795d4e",
+            "model_timestamp": "2018-05-16 19:53:55"
+        }
+    }
+}
