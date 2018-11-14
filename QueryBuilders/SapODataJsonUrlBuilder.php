@@ -19,6 +19,7 @@ class SapODataJsonUrlBuilder extends ODataJsonUrlBuilder
      */
     protected function buildPathToResponseRows(Psr7DataQuery $query)
     {
-        return 'd/results';
+        $customPath = $this->getMainObject()->getDataAddressProperty('response_data_path');
+        return $customPath ?? 'd/results';
     }
 }
