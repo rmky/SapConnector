@@ -1,7 +1,7 @@
 <?php
 namespace exface\SapConnector\QueryBuilders;
 
-use exface\UrlDataConnector\QueryBuilders\ODataJsonUrlBuilder;
+use exface\UrlDataConnector\QueryBuilders\OData2JsonUrlBuilder;
 
 /**
  * Query builder for SAP oData services in JSON format.
@@ -9,7 +9,7 @@ use exface\UrlDataConnector\QueryBuilders\ODataJsonUrlBuilder;
  * @author Andrej Kabachnik
  *
  */
-class SapODataJsonUrlBuilder extends ODataJsonUrlBuilder
+class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
 {
     
 }
