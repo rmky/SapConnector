@@ -22,5 +22,7 @@ To update a specific meta object (e.g. to import new entity type properties), yo
 
 SAP OData services have an enhanced $metadata document (compared to "regular" OData) with additional information like filterable/sortable-flags, etc. This information is used by the model builder to set the corresponding properties in the metamodel. Unfortunately this information is often inaccurate because it needs to be set explicitly in SAP (many developers don't do that). 
 
-In most cases it is absolutely neccessary to take a closer look on the metamodel after it had been generated. Please read the general (non-SAP) [OData model documentation](https://github.com/exface/urldataconnector/Docs/OData/the_metamodel_for_odata.md) before you continue with the [SAP-specific finetuning](metamodel_finetuning.md) docs.
+While the model will work after it was imported (e.g. you will be able to create a table an let it show an EntitySet), many built-in features of the UI like generic filtering, header-sorting, relation-combos, etc. may not work properly. This may even get really frustrating for the users because SAP OData services do not automatically produce meaningfull errors. Thus, if you try filtering an EntitySet over a property without implemented filtering functionality, most services will just provide an empty result or even simply ignore the filter. The user of the UI would have no chance to understand, what happened!
+
+So in most cases it is absolutely neccessary to take a closer look on the metamodel after it had been generated. Please read the general (non-SAP) [OData model documentation](https://github.com/exface/urldataconnector/Docs/OData/the_metamodel_for_odata.md) before you continue with the [SAP-specific finetuning](metamodel_finetuning.md) docs.
 
