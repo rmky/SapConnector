@@ -17,5 +17,5 @@ If you want to use your data source to generate UI5/Fiori apps - refer to the do
 
 - Each business object should have exactly one URL endpoint 
 - Each URL should yield exaclty one business object type (eventually including expanded related objects)
-- Be accurate in your $metadata - if an attribute is marked filterable, it should really be filterable!
+- Be accurate in your $metadata - if an EntityType property is marked filterable, it should really be filterable!
 - Make listing endpoints (EntitySet) as generic as possible to allow the UI designer to pick his filters and sorters without having to request code changes every time.
