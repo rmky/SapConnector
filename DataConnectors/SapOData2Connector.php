@@ -1,16 +1,16 @@
 <?php
 namespace exface\SapConnector\DataConnectors;
 
-use exface\UrlDataConnector\DataConnectors\ODataConnector;
+use exface\UrlDataConnector\DataConnectors\OData2Connector;
 use exface\SapConnector\ModelBuilders\SapODataModelBuilder;
 
 /**
- * HTTP data connector for SAP oData services.
+ * HTTP data connector for SAP oData 2.0 services.
  * 
  * @author Andrej Kabachnik
  *
  */
-class SapODataConnector extends ODataConnector
+class SapOData2Connector extends OData2Connector
 {
     /**
      * 
@@ -19,6 +19,6 @@ class SapODataConnector extends ODataConnector
      */
     public function getModelBuilder()
     {
-        return new SapODataModelBuilder($this);
+        return new SapOData2ModelBuilder($this);
     }
 }

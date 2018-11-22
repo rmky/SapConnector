@@ -1,14 +1,14 @@
 <?php
 namespace exface\SapConnector\ModelBuilders;
 
-use exface\UrlDataConnector\ModelBuilders\ODataModelBuilder;
+use exface\UrlDataConnector\ModelBuilders\OData2ModelBuilder;
 use exface\Core\Interfaces\AppInterface;
 use exface\Core\Interfaces\DataSources\DataSourceInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use exface\Core\Interfaces\Model\MetaObjectInterface;
 
 /**
- * Creates a meta model from SAP specific oData $metadata.
+ * Creates a meta model from SAP specific oData 2.0 $metadata.
  * 
  * In addition to the regular oData $metadata, this model builder will process SAP specific
  * node attributes like sap:label, sap:sortable, etc.
@@ -16,7 +16,7 @@ use exface\Core\Interfaces\Model\MetaObjectInterface;
  * @author Andrej Kabachnik
  *
  */
-class SapODataModelBuilder extends ODataModelBuilder
+class SapOData2ModelBuilder extends OData2ModelBuilder
 {
     /**
      * 
