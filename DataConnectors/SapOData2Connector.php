@@ -2,7 +2,7 @@
 namespace exface\SapConnector\DataConnectors;
 
 use exface\UrlDataConnector\DataConnectors\OData2Connector;
-use exface\SapConnector\ModelBuilders\SapODataModelBuilder;
+use exface\SapConnector\ModelBuilders\SapOData2ModelBuilder;
 
 /**
  * HTTP data connector for SAP oData 2.0 services.
