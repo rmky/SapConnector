@@ -2,7 +2,7 @@
 	"name" : "exface/SapConnector",
 	"support" : {
 		"source" : "https://github.com/exface/sapconnector",
-		"docs" : "https://github.com/exface/sapconnector/Docs",
+		"docs" : "https://github.com/exface/sapconnector/blob/master/Docs",
 		"issues" : "https://github.com/exface/sapconnector/issues"
 	},
 	"require" : {
