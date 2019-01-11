@@ -61,9 +61,12 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     {
         $token = null;
         try {
-            $response = $this->getClient()->get('',['headers' => ['X-CSRF-Token' => 'Fetch']]);
+            $response = $this->getClient()->get('freestyle',['headers' => ['X-CSRF-Token' => 'Fetch']]);
         } catch (RequestException $e) {
             $response = $e->getResponse();
+            if (! $response) {
+                throw $e;
+            }
             $token = $response->getHeader('X-CSRF-Token')[0];
         }
         
@@ -91,7 +94,7 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
      */
     public function getUrl()
     {
-        return rtrim(parent::getUrl(), "/") . '/sap/bc/adt/datapreview/freestyle';
+        return rtrim(parent::getUrl(), "/") . '/sap/bc/adt/datapreview/';
     }
     
     protected function performQuery(DataQueryInterface $query)
@@ -105,12 +108,13 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             $sql = $query->getSql();
             
             // Remove inline comments as they cause errors
-            $sql = preg_replace('/\\*.*/i', '', $sql);
+            $sql = preg_replace('/\--.*/i', '', $sql);
+            $sql = preg_replace('~(*BSR_ANYCRLF)\R~', "\r\n", $sql);            
             
-            $response = $this->performRequest('POST', '', $sql);
+            $response = $this->performRequest('POST', 'freestyle', $sql);
         } catch (RequestException $e) {
             $response = $e->getResponse();
-            throw new DataQueryFailedError($query, 'SQL Error: ' . $response->getBody()->__toString());
+            throw new DataQueryFailedError($query, 'SQL Error: ' . strip_tags($response->getBody()->__toString()));
         }
         
         $query->setResultArray($this->extractDataRows(new Crawler($response->getBody()->__toString())));
@@ -133,9 +137,10 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         return $data;
     }
     
-    public function performRequest(string $method, string $url, string $body) : ResponseInterface
+    public function performRequest(string $method, string $url, string $body, array $headers = []) : ResponseInterface
     {
-        $request = new Request($method, $url, ['X-CSRF-Token' => $this->getCsrfToken(), 'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], $body);
+        $headers = array_merge(['X-CSRF-Token' => $this->getCsrfToken(), 'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], $headers);
+        $request = new Request($method, $url, $headers, $body);
         return $this->getClient()->send($request);
     }
     

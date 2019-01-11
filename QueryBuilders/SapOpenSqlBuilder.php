@@ -32,11 +32,11 @@ class SapOpenSqlBuilder extends MySqlBuilder
         $query = str_replace(
             [
                 ' LIMIT ',
-                '--',
+                //'--',
                 '"'
             ], [
                 ' UP TO ',
-                '*',
+                //'*',
                 ''
             ], 
             $query
