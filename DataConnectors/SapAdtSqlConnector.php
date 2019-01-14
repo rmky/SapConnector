@@ -13,6 +13,8 @@ use GuzzleHttp\Psr7\Request;
 use Symfony\Component\DomCrawler\Crawler;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use exface\Core\Interfaces\Contexts\ContextInterface;
+use exface\Core\Interfaces\Contexts\ContextManagerInterface;
 
 /**
  * Data connector for the SAP ABAP Development Tools (ADT) SQL console webservice.
@@ -41,7 +43,12 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     protected function getCsrfToken() : string
     {
         if ($this->csrfToken === null) {
-            $this->csrfToken = $this->fetchCsrfToken();
+            $sessionToken = $this->getWorkbench()->getApp('exface.SapConnector')->getContextVariable('csrf_token_' . $this->getUrl(), ContextManagerInterface::CONTEXT_SCOPE_SESSION);
+            if ($sessionToken) {
+                $this->csrfToken = $sessionToken;
+            } else {
+                $this->refreshCsrfToken();
+            }
         }
         return $this->csrfToken;
     }
@@ -54,10 +61,11 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     protected function setCsrfToken(string $value) : SapAdtSqlConnector
     {
         $this->csrfToken = $value;
+        $this->getWorkbench()->getApp('exface.SapConnector')->setContextVariable('csrf_token_' . $this->getUrl(), $value, ContextManagerInterface::CONTEXT_SCOPE_SESSION);
         return $this;
     }
     
-    protected function fetchCsrfToken() : string
+    protected function refreshCsrfToken() : string
     {
         $token = null;
         try {
@@ -73,6 +81,8 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         if (! $token) {
             throw new RuntimeException('Cannot fetch CSRF token: ' . $response->getStatusCode() . ' ' . $response->getBody()->__toString());
         }
+        
+        $this->setCsrfToken($token);
         
         return $token;
     }
@@ -106,12 +116,22 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         
         try {
             $sql = $query->getSql();
+            $urlParams = '';
             
             // Remove inline comments as they cause errors
             $sql = preg_replace('/\--.*/i', '', $sql);
-            $sql = preg_replace('~(*BSR_ANYCRLF)\R~', "\r\n", $sql);            
+            // Normalize line endings
+            $sql = preg_replace('~(*BSR_ANYCRLF)\R~', "\r\n", $sql); 
             
-            $response = $this->performRequest('POST', 'freestyle', $sql);
+            // Handle pagination
+            $limit = [];
+            preg_match_all('/UP TO (\d+) OFFSET (\d+)/', $sql, $limit);
+            if ($limit[0]) {
+                $urlParams .= '&rowNumber=' . $limit[1][0];   
+                $sql = str_replace($limit[0][0], '', $sql);
+            }            
+            
+            $response = $this->performRequest('POST', 'freestyle?' . $urlParams, $sql);
         } catch (RequestException $e) {
             $response = $e->getResponse();
             throw new DataQueryFailedError($query, 'SQL Error: ' . strip_tags($response->getBody()->__toString()));
@@ -139,9 +159,24 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     
     public function performRequest(string $method, string $url, string $body, array $headers = []) : ResponseInterface
     {
-        $headers = array_merge(['X-CSRF-Token' => $this->getCsrfToken(), 'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], $headers);
+        $headers = array_merge([
+            'X-CSRF-Token' => $this->getCsrfToken(), 
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        ], $headers);
         $request = new Request($method, $url, $headers, $body);
-        return $this->getClient()->send($request);
+        try {
+            $response = $this->getClient()->send($request);
+        } catch (RequestException $e) {
+            if ($e->getResponse() !== null && $e->getResponse()->getHeader('X-CSRF-Token')[0] === 'Required') {
+                $this->refreshCsrfToken();
+                $request = $request->withHeader('X-CSRF-Token', [$this->getCsrfToken()]);
+                $response = $this->getClient()->send($request);
+            } else {
+                throw $e;
+            }
+        }
+        
+        return $response;
     }
     
     public function getAffectedRowsCount(SqlDataQuery $query)
@@ -169,5 +204,4 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
 
     public function freeResult(SqlDataQuery $query)
     {}
-
 }

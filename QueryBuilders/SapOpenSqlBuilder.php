@@ -2,6 +2,7 @@
 namespace exface\SapConnector\QueryBuilders;
 
 use exface\Core\QueryBuilders\MySqlBuilder;
+use exface\Core\CommonLogic\QueryBuilder\QueryPartSorter;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -29,18 +30,25 @@ class SapOpenSqlBuilder extends MySqlBuilder
     public function buildSqlQuerySelect()
     {
         $query = parent::buildSqlQuerySelect();
+        
+        // Do some simple replacements
         $query = str_replace(
             [
                 ' LIMIT ',
-                //'--',
+                '--',
                 '"'
             ], [
                 ' UP TO ',
-                //'*',
+                '--*',
                 ''
             ], 
             $query
         );
+        
+        // Add spaces to brackets
+        $query = preg_replace('/\(([^ ])/', "( $1", $query);
+        $query = preg_replace('/([^ ])\)/', "$1 )", $query);
+        
         return $query;
     }
     
@@ -72,5 +80,11 @@ class SapOpenSqlBuilder extends MySqlBuilder
     protected function buildSqlAsForSelects(string $alias) : string
     {
         return ' AS ' . $alias;
+    }
+    
+    protected function buildSqlOrderBy(QueryPartSorter $qpart)
+    {
+        $sql = parent::buildSqlOrderBy($qpart);
+        return str_replace(['ASC', 'DESC'], ['ASCENDING', 'DESCENDING'], $sql);
     }
 }
