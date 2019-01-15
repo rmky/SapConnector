@@ -63,9 +63,6 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             case 'I':
                 $data_type = DataTypeFactory::createFromString($workbench, IntegerDataType::class);
                 break;
-            case 'N':
-                $data_type = DataTypeFactory::createFromString($workbench, 'exface.Core.NumericId');
-                break;
             case 'T':
                 $data_type = DataTypeFactory::createFromString($workbench, TimestampDataType::class);
                 break;
