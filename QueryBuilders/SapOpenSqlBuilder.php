@@ -3,6 +3,7 @@ namespace exface\SapConnector\QueryBuilders;
 
 use exface\Core\QueryBuilders\MySqlBuilder;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartSorter;
+use exface\Core\Interfaces\DataTypes\DataTypeInterface;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -27,6 +28,11 @@ class SapOpenSqlBuilder extends MySqlBuilder
         '/'
     );
     
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\MySqlBuilder::buildSqlQuerySelect()
+     */
     public function buildSqlQuerySelect()
     {
         $query = parent::buildSqlQuerySelect();
@@ -82,9 +88,34 @@ class SapOpenSqlBuilder extends MySqlBuilder
         return ' AS ' . $alias;
     }
     
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\AbstractSqlBuilder::buildSqlOrderBy()
+     */
     protected function buildSqlOrderBy(QueryPartSorter $qpart)
     {
         $sql = parent::buildSqlOrderBy($qpart);
-        return str_replace(['ASC', 'DESC'], ['ASCENDING', 'DESCENDING'], $sql);
+        return str_replace([' ASC', ' DESC'], [' ASCENDING', ' DESCENDING'], $sql);
+    }
+    
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\AbstractSqlBuilder::buildSqlWhereComparator()
+     */
+    protected function buildSqlWhereComparator($subject, $comparator, $value, DataTypeInterface $data_type, $sql_data_type = NULL, $value_list_delimiter = EXF_LIST_SEPARATOR)
+    {
+        switch ($comparator) {
+            case EXF_COMPARATOR_IS_NOT:
+                $output = $subject . " NOT LIKE '%" . $this->prepareWhereValue($value, $data_type) . "%'";
+                break;
+            case EXF_COMPARATOR_IS:
+                $output = $subject . " LIKE '%" . $this->prepareWhereValue($value, $data_type) . "%'";
+                break;
+            default:
+                return parent::buildSqlWhereComparator($subject, $comparator, $value, $data_type);
+        }
+        return $output;
     }
 }
