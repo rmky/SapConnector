@@ -134,7 +134,7 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             $response = $this->performRequest('POST', 'freestyle?' . $urlParams, $sql);
         } catch (RequestException $e) {
             $response = $e->getResponse();
-            throw new DataQueryFailedError($query, 'SQL Error: ' . strip_tags($response->getBody()->__toString()));
+            throw new DataQueryFailedError($query, $this->getErrorText($response), '6T2T2UI');
         }
         
         $query->setResultArray($this->extractDataRows(new Crawler($response->getBody()->__toString())));
@@ -204,4 +204,31 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
 
     public function freeResult(SqlDataQuery $query)
     {}
+    
+    /**
+     * Extracts the message text from an error-response of an ADT web service 
+     * 
+     * @param ResponseInterface $response
+     * @return string
+     */
+    protected function getErrorText(ResponseInterface $response) : string
+    {
+        $message = null;
+        
+        $text = trim($response->getBody()->__toString());
+        if (mb_strtolower(substr($text, 0, 6)) === '<html>') {
+            // If the response is HTML, get the <h1> tag
+            $crawler = new Crawler($text);
+            $message = $crawler->filter('h1')->text();
+        } elseif (mb_strtolower(substr($text, 0, 5)) === '<?xml') {
+            // If the response is XML, look for the <message> tag
+            $crawler = new Crawler($text);
+            $message = $crawler->filterXPath('//message')->text();
+        }
+        
+        // If no message could be found, just output the response body
+        // Btw. strip_tags() did not work well as fallback, because it would also output
+        // embedded CSS.
+        return $message ?? $text;
+    }
 }
