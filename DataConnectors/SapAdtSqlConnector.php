@@ -15,6 +15,7 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use exface\Core\Interfaces\Contexts\ContextInterface;
 use exface\Core\Interfaces\Contexts\ContextManagerInterface;
+use exface\Core\Exceptions\DataSources\DataConnectionFailedError;
 
 /**
  * Data connector for the SAP ABAP Development Tools (ADT) SQL console webservice.
@@ -79,7 +80,7 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         }
         
         if (! $token) {
-            throw new RuntimeException('Cannot fetch CSRF token: ' . $response->getStatusCode() . ' ' . $response->getBody()->__toString());
+            throw new DataConnectionFailedError($this, 'Cannot fetch CSRF token: ' . $this->getErrorText($response), null, $e);
         }
         
         $this->setCsrfToken($token);
@@ -124,25 +125,34 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             $sql = preg_replace('~(*BSR_ANYCRLF)\R~', "\r\n", $sql); 
             
             // Handle pagination
-            $limit = [];
-            preg_match_all('/UP TO (\d+) OFFSET (\d+)/', $sql, $limit);
-            if ($limit[0]) {
-                $urlParams .= '&rowNumber=' . $limit[1][0];   
-                $sql = str_replace($limit[0][0], '', $sql);
+            // The DataPreview service seems to remove UP TO clauses from the queries
+            // and replace them with the URL parameter rowNumber. We can fake pagination,
+            // though, by requesting all rows (including the offset) and filtering the
+            // offset away in extractDataRows(). This will make the pagination work, but
+            // will surely become slower with every page - that should be acceptable,
+            // however, as users are very unlikely to manually browse beyond page 10.
+            $limits = [];
+            $offset = 0;
+            preg_match_all('/UP TO (\d+) OFFSET (\d+)/', $sql, $limits);
+            if ($limits[0]) {
+                $limit = $limits[1][0];
+                $offset = $limits[2][0] ?? 0;
+                $urlParams .= '&rowNumber=' . ($limit + $offset);  
+                $sql = str_replace($limits[0][0], '', $sql);
             }            
             
             $response = $this->performRequest('POST', 'freestyle?' . $urlParams, $sql);
         } catch (RequestException $e) {
             $response = $e->getResponse();
-            throw new DataQueryFailedError($query, $this->getErrorText($response), '6T2T2UI');
+            throw new DataQueryFailedError($query, $this->getErrorText($response), '6T2T2UI', $e);
         }
         
-        $query->setResultArray($this->extractDataRows(new Crawler($response->getBody()->__toString())));
+        $query->setResultArray($this->extractDataRows(new Crawler($response->getBody()->__toString()), $offset));
         
         return $query;
     }
     
-    protected function extractDataRows(Crawler $xmlCrawler) : array
+    protected function extractDataRows(Crawler $xmlCrawler, int $offset = 0) : array
     {
         $data = [];
         foreach($xmlCrawler->filterXPath('//dataPreview:columns') as $colNode) {
@@ -150,6 +160,10 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             $colName = $colCrawler->filterXPath('//dataPreview:metadata')->attr('dataPreview:name');
             $r = 0;
             foreach($colCrawler->filterXPath('//dataPreview:data') as $dataNode) {
+                if ($r < $offset) {
+                    $r++;
+                    continue;
+                }
                 $data[$r][$colName] = $dataNode->textContent;
                 $r++;
             }
@@ -216,14 +230,19 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         $message = null;
         
         $text = trim($response->getBody()->__toString());
-        if (mb_strtolower(substr($text, 0, 6)) === '<html>') {
-            // If the response is HTML, get the <h1> tag
-            $crawler = new Crawler($text);
-            $message = $crawler->filter('h1')->text();
-        } elseif (mb_strtolower(substr($text, 0, 5)) === '<?xml') {
-            // If the response is XML, look for the <message> tag
-            $crawler = new Crawler($text);
-            $message = $crawler->filterXPath('//message')->text();
+        try {
+            if (mb_strtolower(substr($text, 0, 6)) === '<html>') {
+                // If the response is HTML, get the <h1> tag
+                $crawler = new Crawler($text);
+                $message = $crawler->filter('h1')->text();
+            } elseif (mb_strtolower(substr($text, 0, 5)) === '<?xml') {
+                // If the response is XML, look for the <message> tag
+                $crawler = new Crawler($text);
+                $message = $crawler->filterXPath('//message')->text();
+            }
+        } catch (\Throwable $e) {
+            $this->getWorkbench()->getLogger()->logException($e);
+            // Ignore errors
         }
         
         // If no message could be found, just output the response body
