@@ -4,6 +4,7 @@ namespace exface\SapConnector\QueryBuilders;
 use exface\Core\QueryBuilders\MySqlBuilder;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartSorter;
 use exface\Core\Interfaces\DataTypes\DataTypeInterface;
+use exface\Core\DataTypes\DateDataType;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -117,5 +118,34 @@ class SapOpenSqlBuilder extends MySqlBuilder
                 return parent::buildSqlWhereComparator($subject, $comparator, $value, $data_type);
         }
         return $output;
+    }
+    
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\MySqlBuilder::prepareWhereValue()
+     */
+    protected function prepareWhereValue($value, DataTypeInterface $data_type, $sql_data_type = NULL)
+    {
+        // IDEA some data type specific procession here
+        if ($data_type instanceof DateDataType) {
+            $value = $data_type::cast($value);
+            return "'" . str_replace('-', '', $value) . "'";
+        } 
+        return parent::prepareWhereValue($value, $data_type, $sql_data_type);
+    }
+    
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\AbstractSqlBuilder::prepareInputValue($value, $data_type, $sql_data_type)
+     */
+    protected function prepareInputValue($value, DataTypeInterface $data_type, $sql_data_type = NULL)
+    {
+        if ($data_type instanceof DateDataType) {
+            $value = $data_type::cast($value);
+            return "'" . str_replace('-', '', $value) . "'";
+        }
+        return parent::prepareWhereValue($value, $data_type, $sql_data_type);
     }
 }
