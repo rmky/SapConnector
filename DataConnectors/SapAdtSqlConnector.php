@@ -115,6 +115,10 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         }
         /* @var $query \exface\Core\CommonLogic\DataQueries\SqlDataQuery */
         
+        // Need to pass the connection back to the query (this is done by the AbstractSqlConnector in ordinary
+        // SQL-connectors and would not happen here as this class extends the HttpConnector)
+        $query->setConnection($this);
+        
         try {
             $sql = $query->getSql();
             $urlParams = '';
@@ -217,7 +221,9 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     }
 
     public function freeResult(SqlDataQuery $query)
-    {}
+    {
+        return;
+    }
     
     /**
      * Extracts the message text from an error-response of an ADT web service 
