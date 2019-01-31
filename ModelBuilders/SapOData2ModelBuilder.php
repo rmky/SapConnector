@@ -31,7 +31,7 @@ class SapOData2ModelBuilder extends OData2ModelBuilder
         foreach ($entity_nodes as $i => $entity) {
             $entitySet = $this->getEntitySetNode($entity);
             if ($label = $entitySet->attr('sap:label')) {
-                $rows[$i]['LABEL'] = $label;
+                $rows[$i]['NAME'] = $label;
             }
             
             if (! ($entitySet->attr('sap:updatable') === 'true' || $entitySet->attr('sap:creatable') === 'true' || $entitySet->attr('sap:deletable') === 'true')) {
@@ -63,7 +63,7 @@ class SapOData2ModelBuilder extends OData2ModelBuilder
         $rows = $ds->getRows();
         foreach ($property_nodes as $i => $property) {
             if ($label = $property->getAttribute('sap:label')) {
-                $rows[$i]['LABEL'] = $label;
+                $rows[$i]['NAME'] = $label;
             }
             
             // Allways set to false for some reason???

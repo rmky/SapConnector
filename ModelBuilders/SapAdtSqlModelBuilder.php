@@ -32,7 +32,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         foreach ($xmlCrawler->filterXPath('//dataPreview:columns/dataPreview:metadata') as $colNode) {
             $attrRows[] = [
                 'ALIAS' => $colNode->getAttribute('dataPreview:name'),
-                'LABEL' => $colNode->getAttribute('dataPreview:description'),
+                'NAME' => $colNode->getAttribute('dataPreview:description'),
                 'DATATYPE' => $this->getDataTypeId($this->guessDataType($meta_object->getWorkbench(), $colNode->getAttribute('dataPreview:type'))),
                 'DATA_ADDRESS' => $colNode->getAttribute('dataPreview:name'),
                 'OBJECT' => $meta_object->getId()
