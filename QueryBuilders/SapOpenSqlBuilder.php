@@ -41,8 +41,38 @@ class SapOpenSqlBuilder extends MySqlBuilder
      */
     public function buildSqlQuerySelect()
     {
-        $query = parent::buildSqlQuerySelect();
-        
+        return $this->translateToOpenSQL(parent::buildSqlQuerySelect());
+    }
+
+    
+    /**
+     *
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\MySqlBuilder::buildSqlQueryCount()
+     */
+    protected function buildSqlQueryCount() : string
+    {
+        return $this->translateToOpenSQL(parent::buildSqlQueryCount());
+    }
+    
+    /**
+     *
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\MySqlBuilder::buildSqlQueryTotals()
+     */
+    public function buildSqlQueryTotals()
+    {
+        return $this->translateToOpenSQL(parent::buildSqlQueryTotals());
+    }
+    
+    /**
+     * Makes some text replacements to translate MySQL to OpenSQL
+     * 
+     * @param string $query
+     * @return string
+     */
+    protected function translateToOpenSQL(string $query) : string
+    {
         // Do some simple replacements
         $query = str_replace(
             [
@@ -53,9 +83,9 @@ class SapOpenSqlBuilder extends MySqlBuilder
                 ' UP TO ',
                 '',
                 //'--"'
-            ], 
+            ],
             $query
-        );
+            );
         
         // Remove comments as they cause strange errors when SQL is copied into eclipse
         // TODO find a way to use comments - otherwise it's hard to understand the query!
