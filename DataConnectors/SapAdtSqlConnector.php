@@ -27,6 +27,8 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
 {
     private $csrfToken = null;
     
+    private $lastRowNumberUrlParam = null;
+    
     /**
      * 
      * {@inheritDoc}
@@ -141,7 +143,8 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             if ($limits[0]) {
                 $limit = $limits[1][0];
                 $offset = $limits[2][0] ?? 0;
-                $urlParams .= '&rowNumber=' . ($limit + $offset);  
+                $this->lastRowNumberUrlParam = $limit + $offset;
+                $urlParams .= '&rowNumber=' . $this->lastRowNumberUrlParam;  
                 $sql = str_replace($limits[0][0], '', $sql);
             }            
             
@@ -151,9 +154,21 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             throw new DataQueryFailedError($query, $this->getErrorText($response), '6T2T2UI', $e);
         }
         
-        $query->setResultArray($this->extractDataRows(new Crawler($response->getBody()->__toString()), $offset));
+        $xml = new Crawler($response->getBody()->__toString());
+        $query->setResultArray($this->extractDataRows($xml, $offset));
+        
+        $cnt = $this->extractTotalRowCounter($xml);
+        if ($cnt !== null) {
+            $query->setResultRowCounter($cnt);
+        }
         
         return $query;
+    }
+    
+    protected function extractTotalRowCounter(Crawler $xmlCrawler) : ?int
+    {
+        $totalRows = $xmlCrawler->filterXPath('//dataPreview:totalRows')->text();
+        return is_numeric($totalRows) === true ? intval($totalRows) : null;
     }
     
     protected function extractDataRows(Crawler $xmlCrawler, int $offset = 0) : array
@@ -185,10 +200,16 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         try {
             $response = $this->getClient()->send($request);
         } catch (RequestException $e) {
-            if ($e->getResponse() !== null && $e->getResponse()->getHeader('X-CSRF-Token')[0] === 'Required') {
+            if ($e->getResponse() === null) {
+                throw $e;
+            }
+            
+            if ($e->getResponse()->getHeader('X-CSRF-Token')[0] === 'Required') {
                 $this->refreshCsrfToken();
                 $request = $request->withHeader('X-CSRF-Token', [$this->getCsrfToken()]);
                 $response = $this->getClient()->send($request);
+            } elseif($e->getResponse()->getStatusCode() === '401') {
+                throw $e;
             } else {
                 throw $e;
             }
@@ -199,7 +220,7 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     
     public function getAffectedRowsCount(SqlDataQuery $query)
     {
-        return 100;
+        return $this->lastRowNumberUrlParam;
     }
 
     public function getInsertId(SqlDataQuery $query)
@@ -256,4 +277,6 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         // embedded CSS.
         return $message ?? $text;
     }
+
+    
 }
