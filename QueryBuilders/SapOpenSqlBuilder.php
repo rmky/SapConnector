@@ -10,6 +10,7 @@ use exface\Core\DataTypes\StringDataType;
 use exface\Core\DataTypes\AggregatorFunctionsDataType;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartAttribute;
 use exface\Core\Interfaces\Model\AggregatorInterface;
+use exface\Core\Interfaces\Selectors\QueryBuilderSelectorInterface;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -21,18 +22,26 @@ use exface\Core\Interfaces\Model\AggregatorInterface;
  */
 class SapOpenSqlBuilder extends MySqlBuilder
 {
-    protected $short_alias_remove_chars = array(
-        '.',
-        '>',
-        '<',
-        '-',
-        '(',
-        ')',
-        ':',
-        ' ',
-        '=',
-        '/'
-    );
+    /**
+     *
+     * @param QueryBuilderSelectorInterface $selector
+     */
+    public function __construct(QueryBuilderSelectorInterface $selector)
+    {
+        parent::__construct($selector);
+        $forbidden = $this->getShortAliasForbiddenChars();
+        $forbidden[] = '/';
+        $this->setShortAliasForbiddenChars($forbidden);
+    }
+    
+    /**
+     * 
+     * @return int
+     */
+    protected function getShortAliasMaxLength() : int
+    {
+        return 30;
+    }
     
     /**
      * 
