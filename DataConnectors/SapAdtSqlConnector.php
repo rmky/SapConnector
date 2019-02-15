@@ -150,8 +150,11 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             
             $response = $this->performRequest('POST', 'freestyle?' . $urlParams, $sql);
         } catch (RequestException $e) {
-            $response = $e->getResponse();
-            throw new DataQueryFailedError($query, $this->getErrorText($response), '6T2T2UI', $e);
+            if (! $response) {
+                $response = $e->getResponse();
+            }
+            $errorText = $response ? $this->getErrorText($response) : $e->getMessage();
+            throw new DataQueryFailedError($query, $errorText, '6T2T2UI', $e);
         }
         
         $xml = new Crawler($response->getBody()->__toString());
