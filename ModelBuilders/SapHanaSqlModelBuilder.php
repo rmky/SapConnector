@@ -30,7 +30,7 @@ class SapHanaSqlModelBuilder extends AbstractSqlModelBuilder
             $rows[] = array(
                 'NAME' => $this->generateLabel($col['COLUMN_NAME']),
                 'ALIAS' => $col['COLUMN_NAME'],
-                'DATATYPE' => $this->getDataTypeId($this->guessDataType($meta_object->getWorkbench(), $col['DATA_TYPE_NAME'])),
+                'DATATYPE' => $this->getDataTypeId($this->guessDataType($meta_object, $col['DATA_TYPE_NAME'])),
                 'DATA_ADDRESS' => $col['COLUMN_NAME'],
                 'OBJECT' => $meta_object->getId(),
                 'REQUIREDFLAG' => ($col['IS_NULLABLE'] == 'FALSE' ? 1 : 0),
