@@ -288,8 +288,11 @@ class SapOpenSqlBuilder extends MySqlBuilder
                         break;
                     case $type instanceof NumberDataType:
                         // Negative numbers have a minus at the end, so we need to put it up front manually
+                        // Positive numbers may have a space at the end - remove that too.
                         if (substr($val, -1) === '-') {
                             $val = '-' . substr($val, 0, -1);
+                        } elseif (substr($val, -1) === ' ') {
+                            $val = substr($val, 0, -1);
                         }
                         break;
                     case $type instanceof DateDataType:
