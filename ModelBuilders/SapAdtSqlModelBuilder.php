@@ -198,7 +198,15 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             
 SQL;
             $q = $this->getDataConnection()->runSql($sql);
-            $this->domains[$tableName] = $q->getResultArray();
+            $data = $q->getResultArray();
+            
+            // Using a CDS-view directly, will not yield any results here - only it's SQL name.
+            // Assuming, the names differ in _CDS at the end, we can try to strip it off a read again. 
+            if (empty($data) && StringDataType::endsWith($tableName, '_CDS')) {
+                $data = $this->getDomainData(StringDataType::substringBefore($tableName, '_CDS'));
+            }
+            
+            $this->domains[$tableName] = $data;
         }
         return $this->domains[$tableName];
     }
