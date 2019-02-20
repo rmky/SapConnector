@@ -25,6 +25,8 @@ use exface\Core\CommonLogic\Selectors\DataTypeSelector;
 use exface\Core\Exceptions\DataTypes\DataTypeNotFoundError;
 use exface\Core\Interfaces\DataSources\DataTransactionInterface;
 use exface\Core\Interfaces\DataTypes\EnumDataTypeInterface;
+use exface\Core\DataTypes\HexadecimalNumberDataType;
+use exface\Core\Interfaces\Model\MetaAttributeInterface;
 
 /**
  * 
@@ -38,7 +40,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
 {
     private $domains = [];
     
-    private $overwriteEnumTypes = false;
+    private $overwriteDataTypes = false;
     
     protected function getAttributeDataFromTableColumns(MetaObjectInterface $meta_object, string $table_name): array
     {
@@ -97,6 +99,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         if ($data_type === null) {
             switch ($sapType) {
                 case 'F':
+                case 'P':
                     $data_type = DataTypeFactory::createFromString($workbench, NumberDataType::class);
                     break;
                 case 'I':
@@ -107,6 +110,13 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                     break;
                 case 'D':
                     $data_type = DataTypeFactory::createFromString($workbench, DateDataType::class);
+                    break;
+                case 'X':
+                case 'XSTRING':
+                    $data_type = DataTypeFactory::createFromString($workbench, HexadecimalNumberDataType::class);
+                    break;
+                case 'N':
+                    $data_type = DataTypeFactory::createFromString($workbench, 'exface.Core.NumericString');
                     break;
                 default:
                     $data_type = DataTypeFactory::createFromString($workbench, StringDataType::class);
@@ -218,22 +228,10 @@ SQL;
             } else {
                 foreach ($existingAttrs as $attr) {
                     if($attr->getAlias() === $row['ALIAS']) {
-                        if ($this->getOverwriteEnumTypes()) {
-                            $importedType = DataTypeFactory::createFromString($meta_object->getWorkbench(), $row['DATATYPE']);
-                            if (($importedType instanceof EnumDataTypeInterface) && ! $attr->getDataType()->isExactly($importedType)) {
-                                $dsUpdate = DataSheetFactory::createFromObjectIdOrAlias($meta_object->getWorkbench(), 'exface.Core.ATTRIBUTE');
-                                $dsUpdate->addFilterFromString('UID', $attr->getId());
-                                $dsUpdate->getColumns()->addMultiple([
-                                    'UID',
-                                    'DATATYPE',
-                                    'MODIFIED_ON',
-                                    'CUSTOM_DATA_TYPE' => '{}'
-                                ]);
-                                $dsUpdate->dataRead();
-                                
-                                $dsUpdate->setCellValue('DATATYPE', 0, $row['DATATYPE']);
-                                $dsUpdate->setCellValue('CUSTOM_DATA_TYPE', 0, '{}');
-                                $dsUpdate->dataUpdate();
+                        $importedType = DataTypeFactory::createFromString($meta_object->getWorkbench(), $row['DATATYPE']);
+                        if (true === $this->getOverwriteDataTypes()) {
+                            if (! $attr->getDataType()->isExactly($importedType)) {
+                                $this->updateDataType($attr, $row['DATATYPE'], '{}');
                             }
                         }
                     }
@@ -250,31 +248,49 @@ SQL;
         return $result_data_sheet;
     }
     
+    protected function updateDataType(MetaAttributeInterface $attr, string $newTypeUID, string $newTypeConfig) : int
+    {
+        $dsUpdate = DataSheetFactory::createFromObjectIdOrAlias($attr->getWorkbench(), 'exface.Core.ATTRIBUTE');
+        $dsUpdate->addFilterFromString('UID', $attr->getId());
+        $dsUpdate->getColumns()->addMultiple([
+            'UID',
+            'DATATYPE',
+            'MODIFIED_ON',
+            'CUSTOM_DATA_TYPE' => '{}'
+        ]);
+        $dsUpdate->dataRead();
+        
+        $dsUpdate->setCellValue('DATATYPE', 0, $newTypeUID);
+        $dsUpdate->setCellValue('CUSTOM_DATA_TYPE', 0, $newTypeConfig);
+        return $dsUpdate->dataUpdate();
+    }
+    
     /**
      *
      * @return bool
      */
-    protected function getOverwriteEnumTypes() : bool
+    protected function getOverwriteDataTypes() : bool
     {
-        return $this->overwriteEnumTypes;
+        return $this->overwriteDataTypes;
     }
     
     /**
-     * Set to TRUE to replace attribute data types for enum domains with auto-generated enum types.
+     * 
+     * Set to TRUE to replace attribute data types with current auto-generated types.
      * 
      * This will not affect secondary attributes for a certain data address (i.e. will only
      * affect attributes, where the data address matches the alias).
      * 
-     * @uxon-property overwrite_enum_types
+     * @uxon-property overwrite_data_types
      * @uxon-type boolean
      * @uxon-default false
      * 
      * @param bool $value
      * @return SapAdtSqlModelBuilder
      */
-    public function setOverwriteEnumTypes(bool $value) : SapAdtSqlModelBuilder
+    public function setOverwriteDataTypes(bool $value) : SapAdtSqlModelBuilder
     {
-        $this->overwriteEnumTypes = $value;
+        $this->overwriteDataTypes = $value;
         return $this;
     }
 }
