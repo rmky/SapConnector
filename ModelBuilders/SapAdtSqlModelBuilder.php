@@ -136,6 +136,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                     'NAME' => $this->getDomainDescription($tableName, $columnName),
                     'PROTOTYPE' => $prototype,
                     'CONFIG_UXON' => (new UxonObject(['values' => $enumVals]))->toJson(),
+                    'DEFAULT_EDITOR_UXON' => (new UxonObject(['widget_type' => 'InputSelect']))->toJson(),
                     'APP' => $object->getAppId()
                 ]);
                 $ds->dataCreate();
