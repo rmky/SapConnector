@@ -11,6 +11,8 @@ use exface\Core\DataTypes\AggregatorFunctionsDataType;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartAttribute;
 use exface\Core\Interfaces\Model\AggregatorInterface;
 use exface\Core\Interfaces\Selectors\QueryBuilderSelectorInterface;
+use exface\Core\CommonLogic\DataQueries\SqlDataQuery;
+use exface\Core\DataTypes\NumberDataType;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -214,7 +216,7 @@ class SapOpenSqlBuilder extends MySqlBuilder
      */
     protected function buildSqlSelectNullCheck($select_statement, $value_if_null)
     {
-        if (StringDataType::startsWith($select_statement, 'COUNT(') === true) {
+        if (true === $this->checkForSqlStatement($select_statement)) {
             return $select_statement;
         }
         return 'COALESCE(' . $select_statement . ', ' . (is_numeric($value_if_null) ? $value_if_null : "'" . $value_if_null . "'") . ')';
@@ -270,5 +272,37 @@ class SapOpenSqlBuilder extends MySqlBuilder
     protected function isEnrichmentAllowed() : bool
     {
         return false;
+    }
+    
+    protected function getReadResultRows(SqlDataQuery $query) : array
+    {
+        $rows = [];
+        foreach ($query->getResultArray() as $nr => $row) {
+            foreach ($this->getAttributes() as $qpart) {
+                $shortAlias = $this->getShortAlias($qpart->getColumnKey());
+                $val = $row[$shortAlias];
+                $type = $qpart->getDataType();
+                switch (true) {
+                    case strcasecmp($qpart->getDataAddressProperty('SQL_DATA_TYPE'), 'BINARY') === 0:
+                        $val = $this->decodeBinary($val);
+                        break;
+                    case $type instanceof NumberDataType:
+                        // Negative numbers have a minus at the end, so we need to put it up front manually
+                        if (substr($val, -1) === '-') {
+                            $val = '-' . substr($val, 0, -1);
+                        }
+                        break;
+                    case $type instanceof DateDataType:
+                        // Dates come as YYYYMMDD, so we need to add the dashes manually.
+                        if ($val) {
+                            $val = substr($val, 0, 4) . '-' . substr($val, 4, 2) . '-' . substr($val, 6);
+                        }
+                        break;
+                        
+                }
+                $rows[$nr][$qpart->getColumnKey()] = $val;
+            }
+        }
+        return $rows;
     }
 }
