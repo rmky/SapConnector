@@ -119,6 +119,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         }
         
         if ($data_type === null) {
+            // If there is no meta data type for the domain yet, find the best match or create one.
             switch ($sapType) {
                 case 'F':
                 case 'P':
@@ -179,9 +180,41 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                 
                 $data_type = $workbench->model()->getModelLoader()->loadDataType($typeSelector);
             }
+        } else {
+            // If there is a domain-specific data type and it is an enum, make sure, it has all the values.
+            // Add new values in any case - even if overwrite_data_types is FALSE.
+            if ($data_type instanceof EnumDataTypeInterface) {
+                $sapVals = $this->getDomainEnumValues($tableName, $columnName);
+                $sapKeys = array_keys($sapVals);
+                $modelVals = $data_type->toArray();
+                $modelKeys = array_keys($modelVals);
+                $missingKeys = array_diff($sapKeys, $modelKeys);
+                if (false === empty($missingKeys)) {
+                    foreach ($missingKeys as $key) {
+                        $modelVals[$key] = $sapVals[$key];
+                    }
+                    $this->updateDataType($data_type, ['CONFIG_UXON' => (new UxonObject(['values' => $modelVals]))->toJson()]);
+                }
+            }
         }
         
         return $data_type;
+    }
+    
+    protected function updateDataType(DataTypeInterface $type, array $data) : int
+    {
+        $ds = DataSheetFactory::createFromObjectIdOrAlias($type->getWorkbench(), 'exface.Core.DATATYPE');
+        $ds->getColumns()->addFromSystemAttributes();
+        $ds->getColumns()->addMultiple([
+            'APP__ALIAS',
+            'ALIAS'
+        ]);
+        $ds->addFilterFromString($ds->getMetaObject()->getUidAttributeAlias(), $this->getDataTypeId($type), EXF_COMPARATOR_EQUALS);
+        $ds->dataRead();
+        foreach ($data as $col => $val) {
+            $ds->setCellValue($col, 0, $val);
+        }
+        return $ds->dataUpdate();
     }
     
     /**
@@ -339,20 +372,20 @@ SQL;
     
     protected function updateAttribute(MetaAttributeInterface $attr, array $data) : int
     {
-        $dsUpdate = DataSheetFactory::createFromObjectIdOrAlias($attr->getWorkbench(), 'exface.Core.ATTRIBUTE');
-        $dsUpdate->addFilterFromString('UID', $attr->getId());
-        $dsUpdate->getColumns()->addMultiple([
+        $ds = DataSheetFactory::createFromObjectIdOrAlias($attr->getWorkbench(), 'exface.Core.ATTRIBUTE');
+        $ds->addFilterFromString($ds->getMetaObject()->getUidAttributeAlias(), $attr->getId());
+        $ds->getColumns()->addFromSystemAttributes();
+        $ds->getColumns()->addMultiple([
             'UID',
             'DATATYPE',
-            'MODIFIED_ON',
             'CUSTOM_DATA_TYPE' => '{}'
         ]);
-        $dsUpdate->dataRead();
+        $ds->dataRead();
         
         foreach ($data as $col => $val) {
-            $dsUpdate->setCellValue($col, 0, $val);
+            $ds->setCellValue($col, 0, $val);
         }
-        return $dsUpdate->dataUpdate();
+        return $ds->dataUpdate();
     }
     
     /**
