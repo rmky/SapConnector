@@ -40,23 +40,44 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
 {
     private $domains = [];
     
+    private $dataTypeConfigs = [];
+    
     private $overwriteDataTypes = false;
+    
+    private $overwriteDescriptions = false;
+    
+    private $overwriteRequired = false;
     
     protected function getAttributeDataFromTableColumns(MetaObjectInterface $meta_object, string $table_name): array
     {
         $response = $this->getDataConnection()->performRequest('POST', 'ddic?rowNumber=1&ddicEntityName=' . $table_name, '');
         $xmlCrawler = new Crawler($response->getBody()->__toString());
         $attrRows = [];
+        $uidColName = $this->findUidColumnName($table_name);
         foreach ($xmlCrawler->filterXPath('//dataPreview:columns/dataPreview:metadata') as $colNode) {
-            $addr = $colNode->getAttribute('dataPreview:name');
-            $type = $this->guessDataType($meta_object, $colNode->getAttribute('dataPreview:type'), $table_name, $addr);
-            $attrRows[] = [
-                'ALIAS' => $addr,
-                'NAME' => $colNode->getAttribute('dataPreview:description'),
+            $colName = $colNode->getAttribute('dataPreview:name');
+            $colDesc = $colNode->getAttribute('dataPreview:description');
+            $type = $this->guessDataType($meta_object, $colNode->getAttribute('dataPreview:type'), $table_name, $colName);
+            $fieldData = $this->getFieldData($table_name, $colName);
+            $attrData = [
+                'ALIAS' => $colName,
+                'NAME' => $colDesc,
                 'DATATYPE' => $this->getDataTypeId($type),
-                'DATA_ADDRESS' => $addr,
-                'OBJECT' => $meta_object->getId()
+                'DATA_ADDRESS' => $colName,
+                'OBJECT' => $meta_object->getId(),
+                'REQUIREDFLAG' => ($this->isRequired($table_name, $colName) ? 1 : 0),
+                'SHORT_DESCRIPTION' => ($colDesc !== $fieldData['SCRTEXT_L'] ? $fieldData['SCRTEXT_L'] : '')
             ];
+            
+            if ($uidColName && $uidColName === $colName) {
+                $attrData['UIDFLAG'] = 1;
+            }
+            
+            if ($opts = $this->getDataTypeCustomOptions($colName, $type)) {
+                $attrData['CUSTOM_DATA_TYPE'] = (new UxonObject($opts))->toJson();
+            }
+                
+            $attrRows[] = $attrData;
         }
         
         return $attrRows;
@@ -86,6 +107,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         $workbench = $object->getWorkbench();
         $sapType = strtoupper(trim($sapType));
         $sapDomain = $this->getDomainName($tableName, $columnName);
+        $fieldData = $this->getFieldData($tableName, $columnName);
         
         if ($sapDomain !== '') {
             try {
@@ -100,7 +122,15 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             switch ($sapType) {
                 case 'F':
                 case 'P':
-                    $data_type = DataTypeFactory::createFromString($workbench, NumberDataType::class);
+                    switch ($fieldData['DECIMALS']) {
+                        case '1': $data_type =  DataTypeFactory::createFromString($workbench, 'exface.Core.Number1'); break;
+                        case '2': $data_type =  DataTypeFactory::createFromString($workbench, 'exface.Core.Number2'); break;
+                        default:
+                            $data_type = DataTypeFactory::createFromString($workbench, NumberDataType::class);
+                            if ($fieldData['DECIMALS']) {
+                                $this->dataTypeConfigs[$columnName]['precision'] = $fieldData['DECIMALS'];
+                            }
+                    }
                     break;
                 case 'I':
                     $data_type = DataTypeFactory::createFromString($workbench, IntegerDataType::class);
@@ -117,12 +147,18 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                     break;
                 case 'N':
                     $data_type = DataTypeFactory::createFromString($workbench, 'exface.Core.NumericString');
+                    if ($fieldData['LENG']) {
+                        $this->dataTypeConfigs[$columnName]['length_max'] = $fieldData['LENG'];
+                    }
                     break;
                 default:
                     $data_type = DataTypeFactory::createFromString($workbench, StringDataType::class);
+                    if ($fieldData['LENG']) {
+                        $this->dataTypeConfigs[$columnName]['length_max'] = $fieldData['LENG'];
+                    }
             }
             
-            $enumVals = $this->getDomainValues($tableName, $columnName);
+            $enumVals = $this->getDomainEnumValues($tableName, $columnName);
             if (false === empty($enumVals)) {
                 if ($data_type instanceof NumberDataType) {
                     $prototype = NumberEnumDataType::class;
@@ -148,38 +184,52 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         return $data_type;
     }
     
-    protected function getDomainValues(string $tableName, string $columnName) : array
+    /**
+     * 
+     * @param string $columnName
+     * @param DataTypeInterface $dataType
+     * @return array|NULL
+     */
+    protected function getDataTypeCustomOptions(string $columnName, DataTypeInterface $dataType) : ?array
+    {
+        return $this->dataTypeConfigs[$columnName];
+    }
+    
+    protected function getDomainEnumValues(string $tableName, string $columnName) : array
     {
         $values = [];
-        foreach ($this->getDomainData($tableName) as $dom) {
-            if (strcasecmp($dom['FIELDNAME'], $columnName) === 0 && $dom['VALUE'] !== '') {
-                $values[$dom['VALUE']] = $dom['TEXT'];
+        foreach ($this->getTableData($tableName) as $dom) {
+            if (strcasecmp($dom['FIELDNAME'], $columnName) === 0 && $dom['ENUM_VALUE'] !== '') {
+                $values[$dom['ENUM_VALUE']] = $dom['ENUM_TEXT'];
             }
         }
         return $values;
     }
     
-    protected function getDomainName(string $tableName, string $columnName) : string
+    protected function getFieldData(string $tableName, string $columnName) : array
     {
-        foreach ($this->getDomainData($tableName) as $dom) {
+        foreach ($this->getTableData($tableName) as $dom) {
             if (strcasecmp($dom['FIELDNAME'], $columnName) === 0) {
-                return $dom['DOMAIN'];
+                $data = $dom;
+                unset($data['ENUM_VALUE']);
+                unset($data['ENUM_TEXT']);
+                return $data;
             }
         }
-        return '';
+        return [];
+    }
+    
+    protected function getDomainName(string $tableName, string $columnName) : string
+    {
+        return $this->getFieldData($tableName, $columnName)['DOMAIN'] ?? '';
     }
     
     protected function getDomainDescription(string $tableName, string $columnName) : string
     {
-        foreach ($this->getDomainData($tableName) as $dom) {
-            if (strcasecmp($dom['FIELDNAME'], $columnName) === 0) {
-                return $dom['DOMAIN_TEXT'];
-            }
-        }
-        return '';
+        return $this->getFieldData($tableName, $columnName)['DOMAIN_TEXT'] ?? '';
     }
     
-    protected function getDomainData(string $tableName) : array
+    protected function getTableData(string $tableName) : array
     {
         if ($this->domains[$tableName] === null) {
             $sql = <<<SQL
@@ -187,15 +237,22 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         SELECT
             dd03l~TABNAME,
             dd03l~FIELDNAME,
+            dd03l~NOTNULL,
+            dd03l~MANDATORY,
+            dd03l~KEYFLAG,
+            dd03l~LENG,
+            dd03l~DECIMALS,
             dd03l~ROLLNAME AS DOMAIN,
             dd04t~DDTEXT as DOMAIN_TEXT,
-            dd07v~DOMVALUE_L AS VALUE,
-            dd07v~DDTEXT AS TEXT
+            dd04t~SCRTEXT_L,
+            dd07v~DOMVALUE_L AS ENUM_VALUE,
+            dd07v~DDTEXT AS ENUM_TEXT
         FROM DD03L AS dd03l
             LEFT OUTER JOIN DD04T AS dd04t ON dd03l~ROLLNAME = dd04t~ROLLNAME AND dd04t~ddLANGUAGE = '{$this->getSapLang($this->getModelLanguage())}'
             LEFT OUTER JOIN DD07V AS dd07v ON dd03l~ROLLNAME = dd07v~DOMNAME AND dd07v~DDLANGUAGE = '{$this->getSapLang($this->getModelLanguage())}'
         WHERE dd03l~TABNAME = '{$tableName}'
             AND dd03l~FIELDNAME <> '.INCLUDE'
+            UP TO 1000 OFFSET 0
             
 SQL;
             $q = $this->getDataConnection()->runSql($sql);
@@ -204,7 +261,12 @@ SQL;
             // Using a CDS-view directly, will not yield any results here - only it's SQL name.
             // Assuming, the names differ in _CDS at the end, we can try to strip it off a read again. 
             if (empty($data) && StringDataType::endsWith($tableName, '_CDS')) {
-                $data = $this->getDomainData(StringDataType::substringBefore($tableName, '_CDS'));
+                $data = $this->getTableData(StringDataType::substringBefore($tableName, '_CDS'));
+            }
+            
+            foreach ($data as $i => $row) {
+                $data[$i]['LENG'] = intval($row['LENG']);
+                $data[$i]['DECIMALS'] = intval($row['DECIMALS']);
             }
             
             $this->domains[$tableName] = $data;
@@ -237,11 +299,29 @@ SQL;
             } else {
                 foreach ($existingAttrs as $attr) {
                     if($attr->getAlias() === $row['ALIAS']) {
+                        $updateData = [];
                         $importedType = DataTypeFactory::createFromString($meta_object->getWorkbench(), $row['DATATYPE']);
                         if (true === $this->getOverwriteDataTypes()) {
+                            $customOpts = $this->getDataTypeCustomOptions($attr->getDataAddress(), $importedType);
                             if (! $attr->getDataType()->isExactly($importedType)) {
-                                $this->updateDataType($attr, $row['DATATYPE'], '{}');
+                                $updateData['DATATYPE'] = $row['DATATYPE'];
+                                $updateData['CUSTOM_DATA_TYPE'] = $row['CUSTOM_DATA_TYPE'];
                             }
+                            if ($attr->getCustomDataTypeUxon()->isEmpty() && $customOpts) {
+                                $updateData['CUSTOM_DATA_TYPE'] = $row['CUSTOM_DATA_TYPE'];
+                            }
+                        }
+                        
+                        if ($this->overwriteRequired && $row['REQUIREDFLAG']) {
+                            $updateData['REQUIREDFLAG'] = $row['REQUIREDFLAG'];
+                        }
+                        
+                        if ($this->overwriteDescriptions && $row['SHORT_DESCRIPTION']) {
+                            $updateData['SHORT_DESCRIPTION'] = $row['SHORT_DESCRIPTION'];
+                        }
+                        
+                        if (false === empty($updateData)) {
+                            $this->updateAttribute($attr, $updateData);
                         }
                     }
                 }
@@ -257,7 +337,7 @@ SQL;
         return $result_data_sheet;
     }
     
-    protected function updateDataType(MetaAttributeInterface $attr, string $newTypeUID, string $newTypeConfig) : int
+    protected function updateAttribute(MetaAttributeInterface $attr, array $data) : int
     {
         $dsUpdate = DataSheetFactory::createFromObjectIdOrAlias($attr->getWorkbench(), 'exface.Core.ATTRIBUTE');
         $dsUpdate->addFilterFromString('UID', $attr->getId());
@@ -269,8 +349,9 @@ SQL;
         ]);
         $dsUpdate->dataRead();
         
-        $dsUpdate->setCellValue('DATATYPE', 0, $newTypeUID);
-        $dsUpdate->setCellValue('CUSTOM_DATA_TYPE', 0, $newTypeConfig);
+        foreach ($data as $col => $val) {
+            $dsUpdate->setCellValue($col, 0, $val);
+        }
         return $dsUpdate->dataUpdate();
     }
     
@@ -301,5 +382,31 @@ SQL;
     {
         $this->overwriteDataTypes = $value;
         return $this;
+    }
+    
+    protected function isRequired(string $tableName, string $columnName) : bool
+    {
+        $fieldData = $this->getFieldData($tableName, $columnName);
+        return $fieldData['NOTNULL'] || $fieldData['MANDATORY'];
+    }
+    
+    /**
+     * Returns the primary key (UID) column name or NULL if the table has multiple keys (MANDT is ignored).
+     * 
+     * @param string $tableName
+     * @return string|NULL
+     */
+    protected function findUidColumnName(string $tableName) : ?string
+    {
+        $found = null;
+        foreach ($this->getTableData($tableName) as $row) {
+            if ($row['KEYFLAG'] && $row['FIELDNAME'] !== 'MANDT') {
+                if ($found !== null) {
+                    return null;
+                }
+                $found = $row['FIELDNAME'];
+            }
+        }
+        return $found;
     }
 }
