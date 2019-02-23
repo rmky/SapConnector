@@ -21,7 +21,7 @@ class SapOData2ModelBuilder extends OData2ModelBuilder
     /**
      * 
      * {@inheritDoc}
-     * @see \exface\UrlDataConnector\ModelBuilders\ODataModelBuilder::getObjectData($entity_nodes, $app, $data_source)
+     * @see \exface\UrlDataConnector\ModelBuilders\OData2ModelBuilder::getObjectData($entity_nodes, $app, $data_source)
      */
     protected function getObjectData(Crawler $entity_nodes, AppInterface $app, DataSourceInterface $data_source) 
     {
@@ -56,6 +56,11 @@ class SapOData2ModelBuilder extends OData2ModelBuilder
         return $ds;
     }
     
+    /**
+     *
+     * {@inheritDoc}
+     * @see \exface\UrlDataConnector\ModelBuilders\OData2ModelBuilder::getAttributeData($entity_nodes, $app, $data_source)
+     */
     protected function getAttributeData(Crawler $property_nodes, MetaObjectInterface $object)
     {
         $ds = parent::getAttributeData($property_nodes, $object);
@@ -102,5 +107,15 @@ class SapOData2ModelBuilder extends OData2ModelBuilder
         $ds->removeRows()->addRows($rows);
         
         return $ds;
+    }
+    
+    /**
+     *
+     * {@inheritDoc}
+     * @see \exface\UrlDataConnector\ModelBuilders\OData2ModelBuilder::findActionNodes($entity_nodes, $app, $data_source)
+     */
+    protected function findActionNodes(string $entityType) : Crawler
+    {
+        return $this->getMetadata()->filterXPath('//default:FunctionImport[@sap:action-for="' . $this->getNamespace($entityType) . '.' . $entityType . '"]');
     }
 }
