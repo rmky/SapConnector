@@ -162,16 +162,17 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             $enumVals = $this->getDomainEnumValues($tableName, $columnName);
             if (false === empty($enumVals)) {
                 if ($data_type instanceof NumberDataType) {
-                    $prototype = NumberEnumDataType::class;
+                    $prototypeClass = NumberEnumDataType::class;
                 } else {
-                    $prototype = StringEnumDataType::class;
+                    $prototypeClass = StringEnumDataType::class;
                 }
+                $prototypeFile = ltrim(str_replace("\\", "/", $prototypeClass), "/") . '.php';
                 
                 $ds = DataSheetFactory::createFromObjectIdOrAlias($workbench, 'exface.Core.DATATYPE');
                 $ds->addRow([
                     'ALIAS' => $this->generateAlias($sapDomain),
                     'NAME' => $this->getDomainDescription($tableName, $columnName),
-                    'PROTOTYPE' => $prototype,
+                    'PROTOTYPE' => $prototypeFile,
                     'CONFIG_UXON' => (new UxonObject(['values' => $enumVals]))->toJson(),
                     'DEFAULT_EDITOR_UXON' => (new UxonObject(['widget_type' => 'InputSelect']))->toJson(),
                     'APP' => $object->getAppId()
