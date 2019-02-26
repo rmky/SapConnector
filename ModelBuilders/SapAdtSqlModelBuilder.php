@@ -65,13 +65,10 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                 'DATATYPE' => $this->getDataTypeId($type),
                 'DATA_ADDRESS' => $colName,
                 'OBJECT' => $meta_object->getId(),
+                'UIDFLAG' => ($uidColName && $uidColName === $colName ? 1 : 0),
                 'REQUIREDFLAG' => ($this->isRequired($table_name, $colName) ? 1 : 0),
                 'SHORT_DESCRIPTION' => ($colDesc !== $fieldData['SCRTEXT_L'] ? $fieldData['SCRTEXT_L'] : '')
             ];
-            
-            if ($uidColName && $uidColName === $colName) {
-                $attrData['UIDFLAG'] = 1;
-            }
             
             if ($opts = $this->getDataTypeCustomOptions($colName, $type)) {
                 $attrData['CUSTOM_DATA_TYPE'] = (new UxonObject($opts))->toJson();
