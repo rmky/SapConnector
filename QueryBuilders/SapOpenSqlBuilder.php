@@ -286,6 +286,11 @@ class SapOpenSqlBuilder extends MySqlBuilder
                     case strcasecmp($qpart->getDataAddressProperty('SQL_DATA_TYPE'), 'BINARY') === 0:
                         $val = $this->decodeBinary($val);
                         break;
+                    case $type->isExactly('exface.Core.NumericString'):
+                        if (is_numeric($val) && intval($val) === 0) {
+                            $val = null;
+                        }
+                        break;
                     case $type instanceof NumberDataType:
                         // Negative numbers have a minus at the end, so we need to put it up front manually
                         // Positive numbers may have a space at the end - remove that too.
