@@ -298,7 +298,11 @@ class SapOpenSqlBuilder extends MySqlBuilder
                     case $type instanceof DateDataType:
                         // Dates come as YYYYMMDD, so we need to add the dashes manually.
                         if ($val) {
-                            $val = substr($val, 0, 4) . '-' . substr($val, 4, 2) . '-' . substr($val, 6);
+                            if ($val === '00000000') {
+                                $val = null;
+                            } else {
+                                $val = substr($val, 0, 4) . '-' . substr($val, 4, 2) . '-' . substr($val, 6);
+                            }
                         }
                         break;
                         
