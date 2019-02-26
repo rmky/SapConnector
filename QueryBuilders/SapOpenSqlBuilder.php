@@ -13,6 +13,7 @@ use exface\Core\Interfaces\Model\AggregatorInterface;
 use exface\Core\Interfaces\Selectors\QueryBuilderSelectorInterface;
 use exface\Core\CommonLogic\DataQueries\SqlDataQuery;
 use exface\Core\DataTypes\NumberDataType;
+use exface\Core\CommonLogic\Model\Aggregator;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -64,16 +65,6 @@ class SapOpenSqlBuilder extends MySqlBuilder
     protected function buildSqlQueryCount() : string
     {
         return $this->translateToOpenSQL(parent::buildSqlQueryCount());
-    }
-    
-    /**
-     *
-     * {@inheritDoc}
-     * @see \exface\Core\QueryBuilders\MySqlBuilder::buildSqlQueryTotals()
-     */
-    public function buildSqlQueryTotals()
-    {
-        return $this->translateToOpenSQL(parent::buildSqlQueryTotals());
     }
     
     /**
@@ -316,5 +307,51 @@ class SapOpenSqlBuilder extends MySqlBuilder
             }
         }
         return $rows;
+    }
+    
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\QueryBuilders\MySqlBuilder::buildSqlQueryTotals()
+     */
+    public function buildSqlQueryTotals()
+    {
+        $totals_joins = array();
+        $totals_core_selects = array();
+        if (count($this->getTotals()) > 0) {
+            // determine all joins, needed to perform the totals functions
+            foreach ($this->getTotals() as $qpart) {
+                $totals_core_selects[] = $this->buildSqlSelect($qpart, null, null, null, $qpart->getTotalAggregator());
+                $totals_joins = array_merge($totals_joins, $this->buildSqlJoins($qpart));
+            }
+        }
+        
+        // filters -> WHERE
+        $totals_where = $this->buildSqlWhere($this->getFilters());
+        $totals_having = $this->buildSqlHaving($this->getFilters());
+        $totals_joins = array_merge($totals_joins, $this->buildSqlJoins($this->getFilters()));
+        // Object data source property SQL_SELECT_WHERE -> WHERE
+        if ($custom_where = $this->getMainObject()->getDataAddressProperty('SQL_SELECT_WHERE')) {
+            $totals_where = $this->appendCustomWhere($totals_where, $custom_where);
+        }
+        // GROUP BY
+        foreach ($this->getAggregations() as $qpart) {
+            $group_by .= ', ' . $this->buildSqlGroupBy($qpart);
+            $totals_joins = array_merge($totals_joins, $this->buildSqlJoins($qpart));
+        }
+        if ($group_by) {
+            $totals_core_selects[] = $this->buildSqlSelect($this->getAttribute($this->getMainObject()->getUidAttributeAlias()), null, null, null, new Aggregator($this->getWorkbench(), AggregatorFunctionsDataType::MAX));
+        }
+        
+        $totals_core_select = implode(",\n", $totals_core_selects);
+        $totals_from = $this->buildSqlFrom();
+        $totals_join = implode("\n ", $totals_joins);
+        $totals_where = $totals_where ? "\n WHERE " . $totals_where : '';
+        $totals_having = $totals_having ? "\n WHERE " . $totals_having : '';
+        $totals_group_by = $group_by ? "\n GROUP BY " . substr($group_by, 2) : '';
+        
+        $totals_query = "\n SELECT COUNT(*) AS EXFCNT, " . $totals_core_select . ' FROM ' . $totals_from . $totals_join . $totals_where . $totals_group_by . $totals_having;
+        
+        return $this->translateToOpenSQL($totals_query);
     }
 }
