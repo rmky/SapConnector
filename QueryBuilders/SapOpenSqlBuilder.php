@@ -14,6 +14,7 @@ use exface\Core\Interfaces\Selectors\QueryBuilderSelectorInterface;
 use exface\Core\CommonLogic\DataQueries\SqlDataQuery;
 use exface\Core\DataTypes\NumberDataType;
 use exface\Core\CommonLogic\Model\Aggregator;
+use exface\Core\DataTypes\BooleanDataType;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -280,6 +281,11 @@ class SapOpenSqlBuilder extends MySqlBuilder
                     case $type->isExactly('exface.Core.NumericString'):
                         if (is_numeric($val) && intval($val) === 0) {
                             $val = null;
+                        }
+                        break;
+                    case $type instanceof BooleanDataType:
+                        if ($val === 'X') {
+                            $val = 1;
                         }
                         break;
                     case $type instanceof NumberDataType:
