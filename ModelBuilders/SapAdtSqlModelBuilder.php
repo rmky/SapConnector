@@ -9,7 +9,7 @@ use exface\Core\Exceptions\NotImplementedError;
 use exface\Core\CommonLogic\Workbench;
 use exface\Core\Factories\DataTypeFactory;
 use exface\Core\DataTypes\StringDataType;
-use exface\Core\DataTypes\TimestampDataType;
+use exface\Core\DataTypes\DateTimeDataType;
 use exface\Core\DataTypes\IntegerDataType;
 use exface\Core\DataTypes\NumberDataType;
 use exface\Core\DataTypes\DateDataType;
@@ -44,9 +44,9 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
     
     private $dataTypeConfigs = [];
     
-    private $overwriteDataTypes = true;
+    private $overwriteDataTypes = false;
     
-    private $overwriteDescriptions = true;
+    private $overwriteDescriptions = false;
     
     private $overwriteRequired = false;
     
@@ -138,7 +138,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                     $data_type = DataTypeFactory::createFromString($workbench, IntegerDataType::class);
                     break;
                 case 'T':
-                    $data_type = DataTypeFactory::createFromString($workbench, TimestampDataType::class);
+                    $data_type = DataTypeFactory::createFromString($workbench, DateTimeDataType::class);
                     break;
                 case 'D':
                     $data_type = DataTypeFactory::createFromString($workbench, DateDataType::class);
