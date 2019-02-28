@@ -28,6 +28,7 @@ use exface\Core\Interfaces\DataTypes\EnumDataTypeInterface;
 use exface\Core\DataTypes\HexadecimalNumberDataType;
 use exface\Core\Interfaces\Model\MetaAttributeInterface;
 use exface\Core\DataTypes\BooleanDataType;
+use exface\Core\Exceptions\RuntimeException;
 
 /**
  * 
@@ -43,9 +44,9 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
     
     private $dataTypeConfigs = [];
     
-    private $overwriteDataTypes = false;
+    private $overwriteDataTypes = true;
     
-    private $overwriteDescriptions = false;
+    private $overwriteDescriptions = true;
     
     private $overwriteRequired = false;
     
@@ -285,7 +286,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             LEFT OUTER JOIN DD07V AS dd07v ON dd03l~DOMNAME = dd07v~DOMNAME AND dd07v~DDLANGUAGE = '{$this->getSapLang($this->getModelLanguage())}'
         WHERE dd03l~TABNAME = '{$tableName}'
             AND dd03l~FIELDNAME <> '.INCLUDE'
-            UP TO 1000 OFFSET 0
+            UP TO 10000 OFFSET 0
             
 SQL;
             $q = $this->getDataConnection()->runSql($sql);
@@ -295,6 +296,10 @@ SQL;
             // Assuming, the names differ in _CDS at the end, we can try to strip it off a read again. 
             if (empty($data) && StringDataType::endsWith($tableName, '_CDS')) {
                 $data = $this->getTableData(StringDataType::substringBefore($tableName, '_CDS'));
+            }
+            
+            if (count($data) == 10000) {
+                throw new RuntimeException('Too many rows found in SAP data dictionary for table "' . $tableName . '" (> 10 000) - there seems to be an error in the model builder logic!');
             }
             
             foreach ($data as $i => $row) {
@@ -443,11 +448,21 @@ SQL;
         return $found;
     }
     
+    /**
+     * 
+     * @param string $tableName
+     * @param string $columnName
+     * @param string $option
+     * @param mixed $value
+     * @return SapAdtSqlModelBuilder
+     */
     protected function addDataTypeCustomOption(string $tableName, string $columnName, string $option, $value) : SapAdtSqlModelBuilder
     {
         $this->dataTypeConfigs[$tableName][$columnName][$option] = $value;
         return $this;
-    }/**
+    }
+    
+    /**
      *
      * @param string $columnName
      * @param DataTypeInterface $dataType
@@ -458,8 +473,12 @@ SQL;
         return $this->dataTypeConfigs[$tableName][$columnName];
     }
     
-    
-    
+    /**
+     * 
+     * @param string $tableName
+     * @param string $columnName
+     * @return SapAdtSqlModelBuilder
+     */
     protected function emptyDataTypeCustomOptions(string $tableName, string $columnName) : SapAdtSqlModelBuilder
     {
         $this->dataTypeConfigs[$tableName][$columnName] = null;
