@@ -6,6 +6,7 @@ use exface\Core\CommonLogic\QueryBuilder\QueryPartSorter;
 use exface\Core\Interfaces\DataTypes\DataTypeInterface;
 use exface\Core\DataTypes\DateDataType;
 use exface\Core\DataTypes\DateTimeDataType;
+use exface\Core\DataTypes\TimeDataType;
 use exface\Core\Interfaces\Model\MetaAttributeInterface;
 use exface\Core\DataTypes\StringDataType;
 use exface\Core\DataTypes\AggregatorFunctionsDataType;
@@ -177,11 +178,14 @@ class SapOpenSqlBuilder extends MySqlBuilder
      */
     protected function prepareWhereValue($value, DataTypeInterface $data_type, $sql_data_type = NULL)
     {
-        // IDEA some data type specific procession here
-        if ($data_type instanceof DateDataType) {
-            $value = $data_type->parse($value);
-            return "'" . str_replace('-', '', $value) . "'";
-        } 
+        switch (true) {
+            case $data_type instanceof DateDataType:
+                $value = $data_type->parse($value);
+                return "'" . str_replace(['-', ' ', ':'], '', $value) . "'";
+            case $data_type instanceof TimeDataType:
+                $value = $data_type->parse($value);
+                return "'" . str_replace([' ', ':'], '', $value) . "'";
+        }
         return parent::prepareWhereValue($value, $data_type, $sql_data_type);
     }
     
@@ -192,9 +196,13 @@ class SapOpenSqlBuilder extends MySqlBuilder
      */
     protected function prepareInputValue($value, DataTypeInterface $data_type, $sql_data_type = NULL)
     {
-        if ($data_type instanceof DateDataType) {
-            $value = $data_type->parse($value);
-            return "'" . str_replace('-', '', $value) . "'";
+        switch (true) {
+            case $data_type instanceof DateDataType:
+                $value = $data_type->parse($value);
+                return "'" . str_replace(['-', ' ', ':'], '', $value) . "'";
+            case $data_type instanceof TimeDataType:
+                $value = $data_type->parse($value);
+                return "'" . str_replace([' ', ':'], '', $value) . "'";
         }
         return parent::prepareWhereValue($value, $data_type, $sql_data_type);
     }
