@@ -27,6 +27,7 @@ use exface\Core\Interfaces\DataSources\DataTransactionInterface;
 use exface\Core\Interfaces\DataTypes\EnumDataTypeInterface;
 use exface\Core\DataTypes\HexadecimalNumberDataType;
 use exface\Core\Interfaces\Model\MetaAttributeInterface;
+use exface\Core\DataTypes\BooleanDataType;
 
 /**
  * 
@@ -67,10 +68,10 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                 'OBJECT' => $meta_object->getId(),
                 'UIDFLAG' => ($uidColName && $uidColName === $colName ? 1 : 0),
                 'REQUIREDFLAG' => ($this->isRequired($table_name, $colName) ? 1 : 0),
-                'SHORT_DESCRIPTION' => ($colDesc !== $fieldData['SCRTEXT_L'] ? $fieldData['SCRTEXT_L'] : '')
+                'SHORT_DESCRIPTION' => ($colDesc !== $fieldData['FIELD_DESC'] ? $fieldData['FIELD_DESC'] : '')
             ];
             
-            if ($opts = $this->getDataTypeCustomOptions($colName, $type)) {
+            if ($opts = $this->getDataTypeCustomOptions($table_name, $colName, $type)) {
                 $attrData['CUSTOM_DATA_TYPE'] = (new UxonObject($opts))->toJson();
             }
                 
@@ -116,6 +117,8 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         }
         
         if ($data_type === null) {
+            $enumVals = $this->getDomainEnumValues($tableName, $columnName);
+            
             // If there is no meta data type for the domain yet, find the best match or create one.
             switch ($sapType) {
                 case 'F':
@@ -126,7 +129,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                         default:
                             $data_type = DataTypeFactory::createFromString($workbench, NumberDataType::class);
                             if ($fieldData['DECIMALS']) {
-                                $this->dataTypeConfigs[$columnName]['precision'] = $fieldData['DECIMALS'];
+                                $this->addDataTypeCustomOption($tableName, $columnName, 'precision', $fieldData['DECIMALS']);
                             }
                     }
                     break;
@@ -146,17 +149,25 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
                 case 'N':
                     $data_type = DataTypeFactory::createFromString($workbench, 'exface.Core.NumericString');
                     if ($fieldData['LENG']) {
-                        $this->dataTypeConfigs[$columnName]['length_max'] = $fieldData['LENG'];
+                        $this->addDataTypeCustomOption($tableName, $columnName, 'length_max', $fieldData['LENG']);
                     }
                     break;
                 default:
                     $data_type = DataTypeFactory::createFromString($workbench, StringDataType::class);
                     if ($fieldData['LENG']) {
-                        $this->dataTypeConfigs[$columnName]['length_max'] = $fieldData['LENG'];
+                        $this->addDataTypeCustomOption($tableName, $columnName, 'length_max', $fieldData['LENG']);
                     }
             }
             
-            $enumVals = $this->getDomainEnumValues($tableName, $columnName);
+            // Booleans can be represented by different data types in SAP, but will have special enum-values
+            if ($fieldData['LENG'] === 1 && count($enumVals) === 2 && ($data_type instanceof StringDataType) && ($enumVals['X'] !== null || $enumVals['x'] !== null)) {
+                $data_type = DataTypeFactory::createFromString($workbench, BooleanDataType::class);
+                // IMPORTANT: Empty $enumVals, to prevent conversion to an enum later in the code!!!
+                $enumVals = [];
+                // IMPORTANT: Empty data type options because boolean has no options
+                $this->emptyDataTypeCustomOptions($tableName, $columnName);
+            }
+            
             if (false === empty($enumVals)) {
                 if ($data_type instanceof NumberDataType) {
                     $prototypeClass = NumberEnumDataType::class;
@@ -215,22 +226,11 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
         return $ds->dataUpdate();
     }
     
-    /**
-     * 
-     * @param string $columnName
-     * @param DataTypeInterface $dataType
-     * @return array|NULL
-     */
-    protected function getDataTypeCustomOptions(string $columnName, DataTypeInterface $dataType) : ?array
-    {
-        return $this->dataTypeConfigs[$columnName];
-    }
-    
     protected function getDomainEnumValues(string $tableName, string $columnName) : array
     {
         $values = [];
         foreach ($this->getTableData($tableName) as $dom) {
-            if (strcasecmp($dom['FIELDNAME'], $columnName) === 0 && $dom['ENUM_VALUE'] !== '') {
+            if (strcasecmp($dom['FIELDNAME'], $columnName) === 0 && ($dom['ENUM_VALUE'] !== '' || $dom['ENUM_TEXT'] !== '')) {
                 $values[$dom['ENUM_VALUE']] = $dom['ENUM_TEXT'];
             }
         }
@@ -273,14 +273,16 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             dd03l~KEYFLAG,
             dd03l~LENG,
             dd03l~DECIMALS,
-            dd03l~ROLLNAME AS DOMAIN,
-            dd04t~DDTEXT as DOMAIN_TEXT,
+            dd03l~DOMNAME AS DOMAIN,
+            dd01t~DDTEXT as DOMAIN_TEXT,
+            dd04t~DDTEXT AS FIELD_DESC,
             dd04t~SCRTEXT_L,
             dd07v~DOMVALUE_L AS ENUM_VALUE,
             dd07v~DDTEXT AS ENUM_TEXT
         FROM DD03L AS dd03l
+            LEFT OUTER JOIN DD01T AS dd01t ON dd03l~DOMNAME = dd01t~DOMNAME AND dd01t~ddLANGUAGE = '{$this->getSapLang($this->getModelLanguage())}'
             LEFT OUTER JOIN DD04T AS dd04t ON dd03l~ROLLNAME = dd04t~ROLLNAME AND dd04t~ddLANGUAGE = '{$this->getSapLang($this->getModelLanguage())}'
-            LEFT OUTER JOIN DD07V AS dd07v ON dd03l~ROLLNAME = dd07v~DOMNAME AND dd07v~DDLANGUAGE = '{$this->getSapLang($this->getModelLanguage())}'
+            LEFT OUTER JOIN DD07V AS dd07v ON dd03l~DOMNAME = dd07v~DOMNAME AND dd07v~DDLANGUAGE = '{$this->getSapLang($this->getModelLanguage())}'
         WHERE dd03l~TABNAME = '{$tableName}'
             AND dd03l~FIELDNAME <> '.INCLUDE'
             UP TO 1000 OFFSET 0
@@ -317,8 +319,8 @@ SQL;
     protected function generateAttributes(MetaObjectInterface $meta_object, DataTransactionInterface $transaction = null) : DataSheetInterface
     {
         $result_data_sheet = DataSheetFactory::createFromObjectIdOrAlias($meta_object->getWorkbench(), 'exface.Core.ATTRIBUTE');
-        
-        $imported_rows = $this->getAttributeDataFromTableColumns($meta_object, $meta_object->getDataAddress());
+        $tableName = $meta_object->getDataAddress();
+        $imported_rows = $this->getAttributeDataFromTableColumns($meta_object, $tableName);
         foreach ($imported_rows as $row) {
             $existingAttrs = $meta_object->findAttributesByDataAddress($row['DATA_ADDRESS']);
             if (empty($existingAttrs)) {
@@ -333,7 +335,7 @@ SQL;
                         $updateData = [];
                         $importedType = DataTypeFactory::createFromString($meta_object->getWorkbench(), $row['DATATYPE']);
                         if (true === $this->getOverwriteDataTypes()) {
-                            $customOpts = $this->getDataTypeCustomOptions($attr->getDataAddress(), $importedType);
+                            $customOpts = $this->getDataTypeCustomOptions($tableName, $attr->getDataAddress(), $importedType);
                             if (! $attr->getDataType()->isExactly($importedType)) {
                                 $updateData['DATATYPE'] = $row['DATATYPE'];
                                 $updateData['CUSTOM_DATA_TYPE'] = $row['CUSTOM_DATA_TYPE'];
@@ -439,5 +441,28 @@ SQL;
             }
         }
         return $found;
+    }
+    
+    protected function addDataTypeCustomOption(string $tableName, string $columnName, string $option, $value) : SapAdtSqlModelBuilder
+    {
+        $this->dataTypeConfigs[$tableName][$columnName][$option] = $value;
+        return $this;
+    }/**
+     *
+     * @param string $columnName
+     * @param DataTypeInterface $dataType
+     * @return array|NULL
+     */
+    protected function getDataTypeCustomOptions(string $tableName, string $columnName, DataTypeInterface $dataType) : ?array
+    {
+        return $this->dataTypeConfigs[$tableName][$columnName];
+    }
+    
+    
+    
+    protected function emptyDataTypeCustomOptions(string $tableName, string $columnName) : SapAdtSqlModelBuilder
+    {
+        $this->dataTypeConfigs[$tableName][$columnName] = null;
+        return $this;
     }
 }
