@@ -5,6 +5,7 @@ use exface\Core\QueryBuilders\MySqlBuilder;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartSorter;
 use exface\Core\Interfaces\DataTypes\DataTypeInterface;
 use exface\Core\DataTypes\DateDataType;
+use exface\Core\DataTypes\DateTimeDataType;
 use exface\Core\Interfaces\Model\MetaAttributeInterface;
 use exface\Core\DataTypes\StringDataType;
 use exface\Core\DataTypes\AggregatorFunctionsDataType;
@@ -298,12 +299,23 @@ class SapOpenSqlBuilder extends MySqlBuilder
                         }
                         break;
                     case $type instanceof DateDataType:
+                    case $type instanceof DateTimeDataType:
                         // Dates come as YYYYMMDD, so we need to add the dashes manually.
+                        $val = trim($val);
                         if ($val) {
-                            if ($val === '00000000') {
+                            $hasTime = strlen($val) === 14;
+                            if ($val === '00000000' || $val === '00000000000000') {
                                 $val = null;
                             } else {
                                 $val = substr($val, 0, 4) . '-' . substr($val, 4, 2) . '-' . substr($val, 6);
+                            }
+                            
+                            if ($hasTime) {
+                                if ($type instanceof DateTimeDataType) {
+                                    $val = substr($val, 0, 10) . ' ' . substr($val, 10, 2) . ':' . substr($val, 12, 2) . ':' . substr($val, 14, 2);
+                                } else {
+                                    $val = substr($val, 0, 10);
+                                }
                             }
                         }
                         break;
