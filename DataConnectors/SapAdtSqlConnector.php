@@ -143,10 +143,12 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             if ($limits[0]) {
                 $limit = $limits[1][0];
                 $offset = $limits[2][0] ?? 0;
-                $this->lastRowNumberUrlParam = $limit + $offset;
-                $urlParams .= '&rowNumber=' . $this->lastRowNumberUrlParam;  
+                $this->lastRowNumberUrlParam = $limit + $offset;  
                 $sql = str_replace($limits[0][0], '', $sql);
-            }            
+            } else {
+                $this->lastRowNumberUrlParam = 99999;
+            }
+            $urlParams .= '&rowNumber=' . $this->lastRowNumberUrlParam;
             
             $response = $this->performRequest('POST', 'freestyle?' . $urlParams, $sql);
         } catch (RequestException $e) {
@@ -158,7 +160,11 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         }
         
         $xml = new Crawler($response->getBody()->__toString());
-        $query->setResultArray($this->extractDataRows($xml, $offset));
+        $rows = $this->extractDataRows($xml, $offset);
+        if (count($rows) === 99999) {
+            throw new DataQueryFailedError($query, 'Query returns too many results: more than 99 999, which is the maximum for the SAP ADT SQL connetor. Please add pagination or filters!');
+        }
+        $query->setResultArray($rows);
         
         $cnt = $this->extractTotalRowCounter($xml);
         if ($cnt !== null) {
