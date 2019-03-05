@@ -150,6 +150,9 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             }
             $urlParams .= '&rowNumber=' . $this->lastRowNumberUrlParam;
             
+            // Finally, make sure the length of a single line in the body does not exceed 255 characters
+            $sql = wordwrap($sql, 255, "\r\n");
+            
             $response = $this->performRequest('POST', 'freestyle?' . $urlParams, $sql);
         } catch (RequestException $e) {
             if (! $response) {
