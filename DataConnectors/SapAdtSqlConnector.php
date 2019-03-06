@@ -170,7 +170,7 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         $query->setResultArray($rows);
         
         $cnt = $this->extractTotalRowCounter($xml);
-        if ($cnt !== null) {
+        if ($cnt !== null && ! ($cnt === 0 && empty($rows) === false)) {
             $query->setResultRowCounter($cnt);
         }
         

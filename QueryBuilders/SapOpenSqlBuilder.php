@@ -376,7 +376,7 @@ class SapOpenSqlBuilder extends MySqlBuilder
         $totals_having = $totals_having ? "\n WHERE " . $totals_having : '';
         $totals_group_by = $group_by ? "\n GROUP BY " . substr($group_by, 2) : '';
         
-        $totals_query = "\n SELECT COUNT(*) AS EXFCNT, " . $totals_core_select . ' FROM ' . $totals_from . $totals_join . $totals_where . $totals_group_by . $totals_having;
+        $totals_query = "\n SELECT COUNT(*) AS EXFCNT" . ($totals_core_select ? ', ' . $totals_core_select : '') . ' FROM ' . $totals_from . $totals_join . $totals_where . $totals_group_by . $totals_having;
         
         return $this->translateToOpenSQL($totals_query);
     }
