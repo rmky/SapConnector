@@ -259,7 +259,10 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
     protected function getDomainDescription(string $tableName, string $columnName) : string
     {
         $fieldData = $this->getFieldData($tableName, $columnName);
-        return $fieldData['DOMAIN_TEXT'] ?? $fieldData['DOMAIN'] ?? '';
+        if ($fieldData['DOMAIN_TEXT'] !== '' && $fieldData['DOMAIN_TEXT'] !== null) {
+            return $fieldData['DOMAIN_TEXT'];
+        }
+        return $fieldData['DOMAIN'];
     }
     
     protected function getTableData(string $tableName) : array
