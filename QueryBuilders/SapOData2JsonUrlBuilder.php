@@ -2,6 +2,7 @@
 namespace exface\SapConnector\QueryBuilders;
 
 use exface\UrlDataConnector\QueryBuilders\OData2JsonUrlBuilder;
+use exface\Core\CommonLogic\QueryBuilder\QueryPartFilter;
 
 /**
  * Query builder for SAP oData services in JSON format.
