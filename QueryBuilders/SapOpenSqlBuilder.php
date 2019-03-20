@@ -263,8 +263,12 @@ class SapOpenSqlBuilder extends MySqlBuilder
         
         switch ($function_name) {
             case AggregatorFunctionsDataType::COUNT:
-                // For some reason COUNT(col) produces a grammar error
-                return 'COUNT(*)';
+                // SAP can only do COUNT(*) or COUNT( DISTINCT col ), so do a COUNT DISTINCT if the column is not unique.
+                if ($qpart->getAttribute()->getDataAddress() === $qpart->getAttribute()->getObject()->getUidAttribute()->getDataAddress()) {
+                    return 'COUNT(*)';
+                } else {
+                    return 'COUNT( DISTINCT ' . $sql . ' )';
+                }
             default:
                 return parent::buildSqlGroupByExpression($qpart, $sql, $aggregator);
         }
