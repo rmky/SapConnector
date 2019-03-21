@@ -2,6 +2,17 @@
 
 ## Create an enterprise service
 
+### Option 1: via `BAPI` from a business object
+
+1. Go to transaction `BAPI`. 
+2. Browse or search for the desired business object. Select the entire business object or one of the methods
+3. In tab `Tools` select `Create Web Service` and press `Start Wizard`
+4. Follow the wizzard.
+
+![BAPI transaction](images/transaction_bapi.png)
+
+### Option 2: via `SE80` from a function module or BAPI
+
 Go to transaction `SE80`, change to Package view and right-click the package, where you want to place your webservice. If you do not have a package yet, use `SE21` to create one.
 
 In the context menu for the package select Create > Enterprise Service. Follow the wizzard, making the following selections:
