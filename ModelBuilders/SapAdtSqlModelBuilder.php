@@ -62,7 +62,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             $type = $this->guessDataType($meta_object, $colNode->getAttribute('dataPreview:type'), $table_name, $colName);
             $fieldData = $this->getFieldData($table_name, $colName);
             $attrData = [
-                'ALIAS' => $colName,
+                'ALIAS' => $this->generateAlias($colName),
                 'NAME' => $colDesc,
                 'DATATYPE' => $this->getDataTypeId($type),
                 'DATA_ADDRESS' => $colName,
