@@ -4,18 +4,14 @@ namespace exface\SapConnector\DataConnectors;
 use exface\UrlDataConnector\DataConnectors\HttpConnector;
 use exface\SapConnector\ModelBuilders\SapAdtSqlModelBuilder;
 use exface\Core\CommonLogic\DataQueries\SqlDataQuery;
-use exface\Core\Exceptions\RuntimeException;
 use GuzzleHttp\Exception\RequestException;
 use exface\Core\Interfaces\DataSources\DataQueryInterface;
 use exface\Core\Interfaces\DataSources\SqlDataConnectorInterface;
 use exface\Core\Exceptions\DataSources\DataQueryFailedError;
 use GuzzleHttp\Psr7\Request;
 use Symfony\Component\DomCrawler\Crawler;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use exface\Core\Interfaces\Contexts\ContextInterface;
-use exface\Core\Interfaces\Contexts\ContextManagerInterface;
-use exface\Core\Exceptions\DataSources\DataConnectionFailedError;
+use exface\SapConnector\DataConnectors\Traits\CsrfTokenTrait;
 
 /**
  * Data connector for the SAP ABAP Development Tools (ADT) SQL console webservice.
@@ -25,7 +21,7 @@ use exface\Core\Exceptions\DataSources\DataConnectionFailedError;
  */
 class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterface
 {
-    private $csrfToken = null;
+    use CsrfTokenTrait;
     
     private $lastRowNumberUrlParam = null;
     
@@ -37,88 +33,6 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     public function getModelBuilder()
     {
         return new SapAdtSqlModelBuilder($this);
-    }
-    
-    /**
-     *
-     * @return string
-     */
-    protected function getCsrfToken() : string
-    {
-        if ($this->csrfToken === null) {
-            $sessionToken = $this->getWorkbench()->getApp('exface.SapConnector')->getContextVariable('csrf_token_' . $this->getUrl(), ContextManagerInterface::CONTEXT_SCOPE_SESSION);
-            if ($sessionToken) {
-                $this->csrfToken = $sessionToken;
-            } else {
-                $this->refreshCsrfToken();
-            }
-        }
-        return $this->csrfToken;
-    }
-    
-    /**
-     * 
-     * @param string $value
-     * @return SapAdtSqlConnector
-     */
-    protected function setCsrfToken(string $value) : SapAdtSqlConnector
-    {
-        $this->csrfToken = $value;
-        $this->getWorkbench()->getApp('exface.SapConnector')->setContextVariable('csrf_token_' . $this->getUrl(), $value, ContextManagerInterface::CONTEXT_SCOPE_SESSION);
-        return $this;
-    }
-    
-    /**
-     * 
-     * @param bool $retryOnError
-     * @throws RequestException
-     * @throws DataConnectionFailedError
-     * @return string
-     */
-    protected function refreshCsrfToken(bool $retryOnError = true) : string
-    {
-        $token = null;
-        try {
-            $response = $this->getClient()->get('freestyle',['headers' => ['X-CSRF-Token' => 'Fetch']]);
-        } catch (RequestException $e) {
-            $response = $e->getResponse();
-            // If there was an error, but there is no response (i.e. the error occurred before 
-            // the response was received), just rethrow the exception.
-            if (! $response) {
-                throw $e;
-            }
-            $token = $response->getHeader('X-CSRF-Token')[0];
-        }
-        
-        // Sometimes, SAP returns a 401 error although the authentication is performed, so the same
-        // request works perfectly well the second time. Just retry to see if this works.
-        // TODO why does the 401 come in the first place? Perhaps it has something to do with
-        // the session expiring...
-        if (! $token && $retryOnError === true && $response && $response->getStatusCode() == 401) {
-            try {
-                $token = $this->refreshCsrfToken(false);
-            } catch (\Throwable $re) {
-                $this->getWorkbench()->getLogger()->logException(new DataConnectionFailedError($this, 'Retry fetch CSRF token failed: ' . $this->getErrorText($response), null, $re));
-            }
-        }
-        
-        if (! $token) {
-            throw new DataConnectionFailedError($this, 'Cannot fetch CSRF token: ' . $this->getErrorText($response) . '. See logs for more details!', null, $e);
-        }
-        
-        $this->setCsrfToken($token);
-        
-        return $token;
-    }
-    
-    /**
-     * 
-     * {@inheritDoc}
-     * @see \exface\UrlDataConnector\DataConnectors\HttpConnector::getUseCookies()
-     */
-    public function getUseCookies()
-    {
-        return true;
     }
     
     /**
@@ -310,6 +224,15 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         // embedded CSS.
         return $message ?? $text;
     }
-
     
+    public function getCsrfRequestUrl() : string
+    {
+        $url = 'freestyle';
+        
+        if ($this->getSapClient() !== null) {
+            $url = $url . '?sap-client=' . $this->getSapClient();
+        }
+        
+        return $url;
+    }
 }
