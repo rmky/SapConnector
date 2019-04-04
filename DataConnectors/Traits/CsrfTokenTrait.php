@@ -5,6 +5,7 @@ use GuzzleHttp\Exception\RequestException;
 use exface\Core\Exceptions\DataSources\DataConnectionFailedError;
 use exface\UrlDataConnector\Interfaces\HttpConnectionInterface;
 use exface\Core\Interfaces\Contexts\ContextManagerInterface;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * This trait adds support for CSRF-tokens to an HTTP connector.
@@ -17,7 +18,7 @@ use exface\Core\Interfaces\Contexts\ContextManagerInterface;
  *
  */
 trait CsrfTokenTrait
-{
+{    
     private $csrfToken = null;
     
     private $sapClient = null;
@@ -65,6 +66,7 @@ trait CsrfTokenTrait
         $token = null;
         try {
             $response = $this->getClient()->get($this->getCsrfRequestUrl(), ['headers' => ['X-CSRF-Token' => 'Fetch']]);
+            $token = $response->getHeader('X-CSRF-Token')[0];
         } catch (RequestException $e) {
             $response = $e->getResponse();
             // If there was an error, but there is no response (i.e. the error occurred before
@@ -159,4 +161,12 @@ trait CsrfTokenTrait
         $this->sapClient = $client;
         return $this;
     }
+    
+    /**
+     * Extracts the message text from an error-response of an ADT web service
+     *
+     * @param ResponseInterface $response
+     * @return string
+     */
+    abstract function getErrorText(ResponseInterface $response) : string;
 }

@@ -194,10 +194,8 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     }
     
     /**
-     * Extracts the message text from an error-response of an ADT web service 
      * 
-     * @param ResponseInterface $response
-     * @return string
+     * @see exface\UrlDataConnector\DataConnectors\HttpConnector::getErrorText()
      */
     protected function getErrorText(ResponseInterface $response) : string
     {
