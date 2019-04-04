@@ -31,13 +31,12 @@ trait CsrfTokenTrait
     protected function getCsrfToken() : string
     {
         if ($this->csrfToken === null) {
-            /*$sessionToken = $this->getWorkbench()->getApp('exface.SapConnector')->getContextVariable('csrf_token_' . $this->getUrl(), ContextManagerInterface::CONTEXT_SCOPE_SESSION);
+            $sessionToken = $this->getWorkbench()->getApp('exface.SapConnector')->getContextVariable('csrf_token_' . $this->getUrl(), ContextManagerInterface::CONTEXT_SCOPE_SESSION);
             if ($sessionToken) {
                 $this->csrfToken = $sessionToken;
             } else {
                 $this->refreshCsrfToken();
-            }*/
-            $this->refreshCsrfToken();
+            }
         }
         return $this->csrfToken;
     }

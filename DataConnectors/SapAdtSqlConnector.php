@@ -224,15 +224,4 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         // embedded CSS.
         return $message ?? $text;
     }
-    
-    public function getCsrfRequestUrl() : string
-    {
-        $url = 'freestyle';
-        
-        if ($this->getSapClient() !== null) {
-            $url = $url . '?sap-client=' . $this->getSapClient();
-        }
-        
-        return $url;
-    }
 }
