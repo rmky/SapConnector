@@ -3,6 +3,7 @@ namespace exface\SapConnector\DataConnectors;
 
 use exface\UrlDataConnector\DataConnectors\OData2Connector;
 use exface\SapConnector\ModelBuilders\SapOData2ModelBuilder;
+use exface\SapConnector\DataConnectors\Traits\CsrfTokenTrait;
 
 /**
  * HTTP data connector for SAP oData 2.0 services.
@@ -12,6 +13,8 @@ use exface\SapConnector\ModelBuilders\SapOData2ModelBuilder;
  */
 class SapOData2Connector extends OData2Connector
 {
+    use CsrfTokenTrait;
+    
     /**
      * 
      * {@inheritDoc}
