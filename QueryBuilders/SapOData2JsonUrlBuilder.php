@@ -6,6 +6,8 @@ use exface\Core\CommonLogic\QueryBuilder\QueryPartFilter;
 use exface\UrlDataConnector\Psr7DataQuery;
 use exface\Core\DataTypes\DateDataType;
 use exface\Core\DataTypes\StringDataType;
+use exface\Core\DataTypes\NumberDataType;
+use exface\UrlDataConnector\QueryBuilders\JsonUrlBuilder;
 
 /**
  * Query builder for SAP oData services in JSON format.
@@ -78,5 +80,46 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
         }
         
         return $request;
+    }
+    
+    /**
+     * We need a custom JSON stringifier for SAP because some data types are handled in
+     * a very (VERY) strange way.
+     * 
+     * - Edm.Decimal is a number, but MUST be enclosed in quotes
+     * 
+     * @see JsonUrlBuilder::encodeBody()
+     */
+    protected function encodeBody($serializableData) : string
+    {
+        $needCustomSerializer = false;
+        $forceQuoteVals = [];
+        foreach ($this->getValues() as $qpart) {
+            if ($qpart->getDataAddressProperty('odata_type') === 'Edm.Decimal') {
+                $needCustomSerializer = true;
+                $forceQuoteVals[] = $qpart->getDataAddress();
+            }
+        }
+        
+        if ($needCustomSerializer) {
+            if (is_array($serializableData)) {
+                $content = '';
+                foreach ($serializableData as $val) {
+                    $content .= ($content ? ',' : '') . $this->encodeBody($val);
+                }
+                return '[' . $content . ']';
+            } elseif ($serializableData instanceof \stdClass) {
+                $pairs = [];
+                $arr = (array) $serializableData;
+                foreach ($arr as $p => $v) {
+                    $pairs[] = '"' . $p . '":' . (in_array($p, $forceQuoteVals) || false === is_numeric($v) ? '"' . str_replace('"', '\"', $v) . '"' : $v);
+                }
+                return '{' . implode(',', $pairs) . '}';
+            } else {
+                return '"' . str_replace('"', '\"', $serializableData) . '"';
+            }
+        }
+        
+        return parent::encodeBody($serializableData);
     }
 }
