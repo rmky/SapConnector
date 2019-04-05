@@ -58,4 +58,25 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
         
         return $rows;
     }
+    
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\UrlDataConnector\QueryBuilders\AbstractUrlBuilder::buildRequestGet()
+     */
+    protected function buildRequestGet()
+    {
+        $request = parent::buildRequestGet();
+        
+        $method = $request->getMethod();
+        if ($method !== 'POST' || $method !== 'PUT' || $method !== 'DELETE') {
+            $qPramsString = $request->getUri()->getQuery();
+            if (mb_stripos($qPramsString, '&$format') === false) {
+                $qPramsString .= '&$format=json';
+                $request = $request->withUri($request->getUri()->withQuery($qPramsString));
+            }
+        }
+        
+        return $request;
+    }
 }
