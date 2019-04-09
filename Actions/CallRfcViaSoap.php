@@ -304,3 +304,4 @@ XML;
         return $this->error_message;
     }
 }
+?>
