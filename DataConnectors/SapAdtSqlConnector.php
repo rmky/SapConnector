@@ -12,6 +12,9 @@ use GuzzleHttp\Psr7\Request;
 use Symfony\Component\DomCrawler\Crawler;
 use Psr\Http\Message\ResponseInterface;
 use exface\SapConnector\DataConnectors\Traits\CsrfTokenTrait;
+use exface\UrlDataConnector\Psr7DataQuery;
+use exface\SapConnector\DataConnectors\Traits\SapHttpConnectorTrait;
+use exface\UrlDataConnector\Exceptions\HttpConnectorRequestError;
 
 /**
  * Data connector for the SAP ABAP Development Tools (ADT) SQL console webservice.
@@ -21,6 +24,7 @@ use exface\SapConnector\DataConnectors\Traits\CsrfTokenTrait;
  */
 class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterface
 {
+    use SapHttpConnectorTrait;
     use CsrfTokenTrait;
     
     private $lastRowNumberUrlParam = null;
@@ -89,11 +93,11 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             $sql = wordwrap($sql, 255, "\r\n");
             
             $response = $this->performRequest('POST', 'freestyle?' . $urlParams, $sql);
-        } catch (RequestException $e) {
+        } catch (HttpConnectorRequestError $e) {
             if (! $response) {
-                $response = $e->getResponse();
+                $response = $e->getQuery()->getResponse();
             }
-            $errorText = $response ? $this->getErrorText($response) : $e->getMessage();
+            $errorText = $response ? $this->getResponseErrorText($response, $e) : $e->getMessage();
             throw new DataQueryFailedError($query, $errorText, '6T2T2UI', $e);
         }
         
@@ -147,18 +151,19 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         try {
             $response = $this->getClient()->send($request);
         } catch (RequestException $e) {
-            if ($e->getResponse() === null) {
-                throw $e;
+            $response = $response ?? $e->getResponse();
+            $query = new Psr7DataQuery($request);
+            $query->setResponse($response);
+            if ($response === null) {
+                throw $this->createResponseException($query, null, $e);
             }
             
             if ($e->getResponse()->getHeader('X-CSRF-Token')[0] === 'Required') {
                 $this->refreshCsrfToken();
                 $request = $request->withHeader('X-CSRF-Token', [$this->getCsrfToken()]);
                 $response = $this->getClient()->send($request);
-            } elseif($e->getResponse()->getStatusCode() === '401') {
-                throw $e;
             } else {
-                throw $e;
+                throw $this->createResponseException($query, $response, $e);
             }
         }
         
@@ -191,35 +196,5 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     public function freeResult(SqlDataQuery $query)
     {
         return;
-    }
-    
-    /**
-     * 
-     * @see exface\UrlDataConnector\DataConnectors\HttpConnector::getErrorText()
-     */
-    protected function getErrorText(ResponseInterface $response) : string
-    {
-        $message = null;
-        
-        $text = trim($response->getBody()->__toString());
-        try {
-            if (mb_strtolower(substr($text, 0, 6)) === '<html>') {
-                // If the response is HTML, get the <h1> tag
-                $crawler = new Crawler($text);
-                $message = $crawler->filter('h1')->text();
-            } elseif (mb_strtolower(substr($text, 0, 5)) === '<?xml') {
-                // If the response is XML, look for the <message> tag
-                $crawler = new Crawler($text);
-                $message = $crawler->filterXPath('//message')->text();
-            }
-        } catch (\Throwable $e) {
-            $this->getWorkbench()->getLogger()->logException($e);
-            // Ignore errors
-        }
-        
-        // If no message could be found, just output the response body
-        // Btw. strip_tags() did not work well as fallback, because it would also output
-        // embedded CSS.
-        return $message ?? $text;
     }
 }
