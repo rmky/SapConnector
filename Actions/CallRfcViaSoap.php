@@ -18,6 +18,8 @@ use exface\Core\Interfaces\Model\MetaObjectInterface;
 use exface\Core\CommonLogic\Actions\ServiceParameter;
 use exface\Core\Interfaces\Actions\ServiceParameterInterface;
 use Symfony\Component\DomCrawler\Crawler;
+use exface\Core\Interfaces\Model\ConditionGroupInterface;
+use exface\Core\DataTypes\ComparatorDataType;
 
 /**
  * Calls a SOAP service operation.
@@ -78,10 +80,43 @@ XML;
     {
         $params = '';
         foreach ($this->getParameters() as $param) {
-            $val = $data->getCellValue($param->getName(), 0);
+            $val = $this->getParamValue($data, $param);
             $params .= '<' . $param->getName() . '>' . $this->prepareParamValue($param, $val) . '</' . $param->getName() . '>';
         }
         return $params;
+    }
+    
+    protected function getParamValue(DataSheetInterface $data, ServiceParameterInterface $param) : ?string
+    {
+        $val = null;
+        if ($col = $data->getColumns()->get($param->getName())) {
+            $val = $col->getCellValue(0);
+        } else {
+            $val = $this->getParamValueFromFilters($data->getFilters(), $param);
+        }
+        return $val;
+    }
+    
+    protected function getParamValueFromFilters(ConditionGroupInterface $filters, ServiceParameterInterface $param) : ?string
+    {
+        $val = null;
+        if ($filters->getOperator() === EXF_LOGICAL_AND) {
+            foreach ($filters->getConditions() as $condition) {
+                if (strcasecmp($condition->getExpression()->__toString(), $param->getName()) === 0 && false === $condition->isEmpty()) {
+                    switch ($condition->getComparator()) {
+                        case ComparatorDataType::IS:
+                        case ComparatorDataType::EQUALS:
+                            return $condition->getValue();
+                    }
+                }
+            }
+            foreach ($filters->getNestedGroups() as $grp) {
+                if ($val = $this->getParamValueFromFilters($grp, $param)) {
+                    return $val;
+                }
+            }
+        }
+        return $val;
     }
     
     protected function buildRequestHeader() : array
@@ -113,7 +148,7 @@ XML;
         }
     }
           
-    protected function prepareParamValue(ServiceParameterInterface $parameter, $val) : string
+    protected function prepareParamValue(ServiceParameterInterface $parameter, $val) : ?string
     {
         if ($parameter->hasDefaultValue() === true && $val === null) {
             $val = $parameter->getDefaultValue();
@@ -147,8 +182,9 @@ XML;
             }  
         }
         if ($response->getStatusCode() == 200) {
-            return $ds->setFresh(true);
+            $ds->setFresh(true);
         }
+        $ds->setCounterForRowsInDataSource($ds->countRows());
         return $ds;
     }
     

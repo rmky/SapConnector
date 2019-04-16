@@ -21,8 +21,6 @@ trait CsrfTokenTrait
 {    
     private $csrfToken = null;
     
-    private $sapClient = null;
-    
     private $csrfRequestUrl = '';
     
     /**
@@ -85,12 +83,12 @@ trait CsrfTokenTrait
             try {
                 $token = $this->refreshCsrfToken(false);
             } catch (\Throwable $re) {
-                $this->getWorkbench()->getLogger()->logException(new DataConnectionFailedError($this, 'Retry fetch CSRF token failed: ' . $this->getErrorText($response), null, $re));
+                $this->getWorkbench()->getLogger()->logException(new DataConnectionFailedError($this, 'Retry fetch CSRF token failed: ' . $this->getResponseErrorText($response), null, $re));
             }
         }
         
         if (! $token) {
-            throw new DataConnectionFailedError($this, 'Cannot fetch CSRF token: ' . $this->getErrorText($response) . '. See logs for more details!', null, $e);
+            throw new DataConnectionFailedError($this, 'Cannot fetch CSRF token: ' . $this->getResponseErrorText($response) . '. See logs for more details!', null, $e);
         }
         
         $this->setCsrfToken($token);
@@ -106,8 +104,8 @@ trait CsrfTokenTrait
     {
         $url = $this->csrfRequestUrl;
         
-        if ($this->getSapClient() !== null) {
-            $url = $url . '?sap-client=' . $this->getSapClient();
+        if ($this->getFixedUrlParams() !== '') {
+            $url = $url . '?' . $this->getFixedUrlParams();
         }
         
         return $url;
@@ -139,34 +137,16 @@ trait CsrfTokenTrait
     }
     
     /**
-     * 
-     * @return string|NULL
-     */
-    public function getSapClient() : ?string
-    {
-        return $this->sapClient;
-    }
-    
-    /**
-     * SAP client (MANDT) to connect to.
-     * 
-     * @uxon-property sap_client
-     * @uxon-type string
-     * 
-     * @param string $client
-     * @return HttpConnectionInterface
-     */
-    public function setSapClient(string $client) : HttpConnectionInterface
-    {
-        $this->sapClient = $client;
-        return $this;
-    }
-    
-    /**
      * Extracts the message text from an error-response of an ADT web service
      *
      * @param ResponseInterface $response
      * @return string
      */
-    abstract function getErrorText(ResponseInterface $response) : string;
+    abstract function getResponseErrorText(ResponseInterface $response) : string;
+    
+    /**
+     * 
+     * @return string
+     */
+    abstract function getFixedUrlParams() : string;
 }

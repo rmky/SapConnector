@@ -7,6 +7,7 @@ use exface\SapConnector\DataConnectors\Traits\CsrfTokenTrait;
 use exface\Core\Interfaces\DataSources\DataQueryInterface;
 use exface\UrlDataConnector\Psr7DataQuery;
 use exface\Core\Exceptions\DataSources\DataConnectionQueryTypeError;
+use exface\SapConnector\DataConnectors\Traits\SapHttpConnectorTrait;
 
 /**
  * HTTP data connector for SAP oData 2.0 services.
@@ -17,6 +18,7 @@ use exface\Core\Exceptions\DataSources\DataConnectionQueryTypeError;
 class SapOData2Connector extends OData2Connector
 {
     use CsrfTokenTrait;
+    use SapHttpConnectorTrait;
     
     /**
      * 
