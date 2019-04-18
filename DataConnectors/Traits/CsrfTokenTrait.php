@@ -142,7 +142,7 @@ trait CsrfTokenTrait
      * @param ResponseInterface $response
      * @return string
      */
-    abstract function getResponseErrorText(ResponseInterface $response) : string;
+    abstract function getResponseErrorText(ResponseInterface $response, \Throwable $exceptionThrown = null) : string;
     
     /**
      * 
