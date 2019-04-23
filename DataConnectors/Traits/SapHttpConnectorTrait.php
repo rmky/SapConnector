@@ -57,7 +57,7 @@ trait SapHttpConnectorTrait
      *
      * @see HttpConnector::getResponseErrorText()
      */
-    protected function getResponseErrorText(ResponseInterface $response) : string
+    protected function getResponseErrorText(ResponseInterface $response, \Throwable $exceptionThrown = null) : string
     {
         $message = null;
         
