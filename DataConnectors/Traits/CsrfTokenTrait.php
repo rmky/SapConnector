@@ -30,7 +30,7 @@ trait CsrfTokenTrait
     protected function getCsrfToken() : string
     {
         if ($this->csrfToken === null) {
-            $sessionToken = $this->getWorkbench()->getApp('exface.SapConnector')->getContextVariable('csrf_token_' . $this->getUrl(), ContextManagerInterface::CONTEXT_SCOPE_SESSION);
+            $sessionToken = $this->getWorkbench()->getApp('exface.SapConnector')->getContextVariable($this->getCsrfTokenContextVarName(), ContextManagerInterface::CONTEXT_SCOPE_SESSION);
             if ($sessionToken) {
                 $this->csrfToken = $sessionToken;
             } else {
@@ -38,6 +38,11 @@ trait CsrfTokenTrait
             }
         }
         return $this->csrfToken;
+    }
+    
+    protected function getCsrfTokenContextVarName() : string
+    {
+        return 'csrf_token_' . $this->getCsrfRequestUrl();
     }
     
     /**
@@ -48,7 +53,7 @@ trait CsrfTokenTrait
     protected function setCsrfToken(string $value) : HttpConnectionInterface
     {
         $this->csrfToken = $value;
-        $this->getWorkbench()->getApp('exface.SapConnector')->setContextVariable('csrf_token_' . $this->getUrl(), $value, ContextManagerInterface::CONTEXT_SCOPE_SESSION);
+        $this->getWorkbench()->getApp('exface.SapConnector')->setContextVariable($this->getCsrfTokenContextVarName(), $value, ContextManagerInterface::CONTEXT_SCOPE_SESSION);
         return $this;
     }
     
