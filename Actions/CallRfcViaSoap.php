@@ -20,6 +20,7 @@ use exface\Core\Interfaces\Actions\ServiceParameterInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use exface\Core\Interfaces\Model\ConditionGroupInterface;
 use exface\Core\DataTypes\ComparatorDataType;
+use exface\Core\Exceptions\DataSources\DataQueryFailedError;
 
 /**
  * Calls a SOAP service operation.
@@ -46,7 +47,12 @@ class CallRfcViaSoap extends AbstractAction implements iCallService
         parent::init();
         // TODO name, icon
     }
-    
+
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\CommonLogic\AbstractAction::perform()
+     */
     protected function perform(TaskInterface $task, DataTransactionInterface $transaction): ResultInterface
     {
         $input = $this->getInputDataSheet($task);
@@ -55,7 +61,11 @@ class CallRfcViaSoap extends AbstractAction implements iCallService
         $request = new Request($this->getHttpMethod(), $this->buildUrl($input), $this->buildRequestHeader(), $body);
         $query = new Psr7DataQuery($request);
         $response = $this->getDataConnection()->query($query)->getResponse();
-        $resultData = $this->parseResponse($response);
+        try {
+            $resultData = $this->parseResponse($response);
+        } catch (\Throwable $e) {
+            throw new DataQueryFailedError($query, $e->getMessage(), null, $e);
+        }
         
         return ResultFactory::createDataResult($task, $resultData, $this->getResultMessageText() ?? $this->buildResultMessage($response));
     }
