@@ -8,6 +8,8 @@ use exface\Core\DataTypes\DateDataType;
 use exface\Core\DataTypes\StringDataType;
 use exface\Core\DataTypes\NumberDataType;
 use exface\UrlDataConnector\QueryBuilders\JsonUrlBuilder;
+use exface\Core\Interfaces\DataTypes\DataTypeInterface;
+use exface\Core\CommonLogic\QueryBuilder\QueryPartAttribute;
 
 /**
  * Query builder for SAP oData services in JSON format.
@@ -49,7 +51,7 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
                     $val = $row[$qpart->getDataAddress()];
                     if (StringDataType::startsWith($val, '/Date(')) {
                         $mil = substr($val, 6, -2);
-                        $seconds = $mil / 1000;
+                        $seconds = round($mil / 1000);
                         $newVal = $dataType->parse($seconds);
                         $rows[$rowNr][$qpart->getDataAddress()] = $newVal;
                     }
@@ -92,34 +94,42 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
      */
     protected function encodeBody($serializableData) : string
     {
-        $needCustomSerializer = false;
         $forceQuoteVals = [];
+        
         foreach ($this->getValues() as $qpart) {
-            if ($qpart->getDataAddressProperty('odata_type') === 'Edm.Decimal') {
-                $needCustomSerializer = true;
+            if ($this->needsQuotes($qpart) === true) {
                 $forceQuoteVals[] = $qpart->getDataAddress();
             }
         }
         
-        if ($needCustomSerializer) {
-            if (is_array($serializableData)) {
-                $content = '';
-                foreach ($serializableData as $val) {
-                    $content .= ($content ? ',' : '') . $this->encodeBody($val);
-                }
-                return '[' . $content . ']';
-            } elseif ($serializableData instanceof \stdClass) {
-                $pairs = [];
-                $arr = (array) $serializableData;
-                foreach ($arr as $p => $v) {
-                    $pairs[] = '"' . $p . '":' . (in_array($p, $forceQuoteVals) || false === is_numeric($v) ? '"' . str_replace('"', '\"', $v) . '"' : $v);
-                }
-                return '{' . implode(',', $pairs) . '}';
-            } else {
-                return '"' . str_replace('"', '\"', $serializableData) . '"';
+        if (is_array($serializableData)) {
+            $content = '';
+            foreach ($serializableData as $val) {
+                $content .= ($content ? ',' : '') . $this->encodeBody($val);
             }
+            return '[' . $content . ']';
+        } elseif ($serializableData instanceof \stdClass) {
+            $pairs = [];
+            $arr = (array) $serializableData;
+            foreach ($arr as $p => $v) {
+                $pairs[] = '"' . $p . '":' . (in_array($p, $forceQuoteVals) || false === is_numeric($v) ? '"' . str_replace('"', '\"', $v) . '"' : $v);
+            }
+            return '{' . implode(',', $pairs) . '}';
+        } else {
+            return '"' . str_replace('"', '\"', $serializableData) . '"';
         }
         
         return parent::encodeBody($serializableData);
+    }
+    
+    protected function needsQuotes(QueryPartAttribute $qpart) : bool
+    {
+        $modelType = $qpart->getDataType();
+        $odataType = $qpart->getDataAddressProperty('odata_type');
+        switch (true) {
+            case $odataType  === 'Edm.Decimal': return true;
+            case $modelType instanceof StringDataType: return true;
+        }
+        return false;
     }
 }
