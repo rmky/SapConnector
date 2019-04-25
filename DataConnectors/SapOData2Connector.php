@@ -8,6 +8,7 @@ use exface\Core\Interfaces\DataSources\DataQueryInterface;
 use exface\UrlDataConnector\Psr7DataQuery;
 use exface\Core\Exceptions\DataSources\DataConnectionQueryTypeError;
 use exface\SapConnector\DataConnectors\Traits\SapHttpConnectorTrait;
+use exface\Core\Exceptions\DataSources\DataQueryFailedError;
 
 /**
  * HTTP data connector for SAP oData 2.0 services.
@@ -19,6 +20,8 @@ class SapOData2Connector extends OData2Connector
 {
     use CsrfTokenTrait;
     use SapHttpConnectorTrait;
+    
+    private $csrfRetryCount = 0;
     
     /**
      * 
@@ -47,6 +50,20 @@ class SapOData2Connector extends OData2Connector
             $query->setRequest($request->withHeader('X-CSRF-Token', $this->getCsrfToken()));
         }
         
-        return parent::performQuery($query);
+        try {
+            $result = parent::performQuery($query);
+            $this->csrfRetryCount = 0;
+            return $result;
+        } catch (DataQueryFailedError $e) {
+            if ($response = $e->getQuery()->getResponse()) {
+                /* var $response \Psr\Http\Message\ResponseInterface */
+                if ($this->csrfRetryCount === 0 && $response->getStatusCode() == 403 && $response->getHeader('x-csrf-token')[0] === 'Required') {
+                    $this->csrfRetryCount++;
+                    $this->refreshCsrfToken();
+                    return $this->performQuery($query);
+                }
+            }
+            throw $e;
+        }
     }
 }
