@@ -51,6 +51,8 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
                     $val = $row[$qpart->getDataAddress()];
                     if (StringDataType::startsWith($val, '/Date(')) {
                         $mil = substr($val, 6, -2);
+                        // FIXME should not round here. Otherwise real date values allways change
+                        // when an object is saved the first time after being created.
                         $seconds = round($mil / 1000);
                         $newVal = $dataType->parse($seconds);
                         $rows[$rowNr][$qpart->getDataAddress()] = $newVal;
@@ -131,5 +133,21 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
             case $modelType instanceof StringDataType: return true;
         }
         return false;
+    }
+    
+    /**
+     * 
+     * {@inheritdoc}
+     * @see OData2JsonUrlBuilder::buildODataValue()
+     */
+    protected function buildODataValue(QueryPartAttribute $qpart, $preformattedValue = null)
+    {
+        switch ($qpart->getAttribute()->getDataAddressProperty('odata_type')) {
+            case 'Edm.DateTime':
+                $date = new \DateTime(str_replace("'", '', $preformattedValue));
+                return "/Date(" . $date->format('U') . "000)/";
+            default:
+                return parent::buildODataValue($qpart, $preformattedValue);
+        }
     }
 }
