@@ -43,7 +43,6 @@ class ITSmobileProxyFacade extends AbstractFacade implements HttpFacadeInterface
             $this->getWorkbench()->start();
         }
         
-        $url = $request->getQueryParams()['url'];
         $method = $request->getMethod();
         $requestHeaders = $request->getHeaders();
         $requestHeaders['Accept'][0] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3';
@@ -53,11 +52,15 @@ class ITSmobileProxyFacade extends AbstractFacade implements HttpFacadeInterface
         
         $uri = $request->getUri();
         
-        $dataSourceSelector = StringDataType::substringAfter($uri->getPath(), 'api/itsmobileproxy/');
-        $dataSourceSelector = rtrim($dataSourceSelector, "/");
+        $url = $request->getQueryParams()['url'];
+        $pathParts = explode('/', StringDataType::substringAfter($uri->getPath(), 'api/itsmobileproxy/'));
+        $dataSourceSelector = $pathParts[0];
+        if (! $url && $pathParts[1] === 'url') {
+            $url = gzinflate(urldecode($pathParts[2]));
+        }
 
         if (! $dataSourceSelector) {
-            throw new RuntimeException('No Data Source UI or Name found in the Request!');
+            throw new RuntimeException('No data source selector (UID or alias) found in the request!');
         }
         
         $dataSource = DataSourceFactory::createFromModel($this->getWorkbench(), $dataSourceSelector);
@@ -80,7 +83,6 @@ class ITSmobileProxyFacade extends AbstractFacade implements HttpFacadeInterface
         unset($responseHeaders['Transfer-Encoding']);
         
         $responseBody = $result->getBody()->__toString();
-        $url = $request->getUri();
         
         // Do theme-specific transformations
         $responseBody = $this->processITSmobileTheme($url, $responseBody);        
