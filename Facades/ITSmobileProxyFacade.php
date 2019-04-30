@@ -1,8 +1,6 @@
 <?php
 namespace exface\SapConnector\Facades;
 
-use exface\Core\Facades\AbstractFacade\AbstractFacade;
-use exface\Core\Interfaces\Facades\HttpFacadeInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use function GuzzleHttp\Psr7\stream_for;
@@ -13,9 +11,10 @@ use exface\Core\Factories\DataSourceFactory;
 use exface\UrlDataConnector\Interfaces\HttpConnectionInterface;
 use exface\Core\Exceptions\RuntimeException;
 use exface\UrlDataConnector\Psr7DataQuery;
+use exface\Core\Facades\AbstractHttpFacade\AbstractHttpFacade;
 
 /**
- * 
+ * This facade is used by the exface.SapConnector.ITSmobile widget to remote control ITSmobile applications.
  * 
  * Currently this proxy only supports ITSmobile theme 99 (default).
  * 
@@ -28,7 +27,7 @@ use exface\UrlDataConnector\Psr7DataQuery;
  * @author Andrej Kabachnik
  *
  */
-class ITSmobileProxyFacade extends AbstractFacade implements HttpFacadeInterface
+class ITSmobileProxyFacade extends AbstractHttpFacade
 {
     private $url = null;
     
@@ -163,31 +162,15 @@ JS;
         }
         return $responseBody;
     }
-    
+
     /**
      *
      * {@inheritDoc}
-     * @see \exface\Core\Interfaces\Facades\HttpFacadeInterface::getUrlRoutePatterns()
+     * @see \exface\Core\Facades\AbstractHttpFacade\AbstractHttpFacade::getUrlRouteDefault()
      */
-    public function getUrlRoutePatterns() : array
+    public function getUrlRouteDefault(): string
     {
-        return [
-            "/\/api\/itsmobileproxy[\/?]/"
-        ];
-    }
-    
-    /**
-     *
-     * @return string
-     */
-    public function getBaseUrl() : string{
-        if (is_null($this->url)) {
-            if (! $this->getWorkbench()->isStarted()) {
-                $this->getWorkbench()->start();
-            }
-            $this->url = $this->getWorkbench()->getCMS()->buildUrlToApi() . '/api/itsmobileproxy';
-        }
-        return $this->url;
+        return 'api/itsmobileproxy';
     }
     
     /**
@@ -197,6 +180,6 @@ JS;
      */
     public function getProxyUrl(string $uri) : string
     {
-        return $this->getBaseUrl() . '?url=' . urlencode($uri);
+        return $this->buildUrlToFacade() . '?url=' . urlencode($uri);
     }
 }
