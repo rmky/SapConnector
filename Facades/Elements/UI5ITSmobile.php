@@ -211,6 +211,13 @@ JS;
 JS;
     }
         
+    /**
+     * Theme 99 specific CSS and JavaScript file including
+     * 
+     * @param string $baseUrl
+     * @param string $proxyUrl
+     * @return UI5ITSmobile
+     */
     protected function registerITSmobileThemeIncludes(string $baseUrl, string $proxyUrl) : UI5ITSmobile
     {
         $mobileJsPath = urlencode(gzdeflate( $baseUrl . '/sap/public/bc/its/mimes/itsmobile/99/scripts/all/mobile.js'));
