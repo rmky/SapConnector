@@ -7,6 +7,8 @@ use exface\UI5Facade\Facades\Elements\UI5AbstractElement;
 use exface\SapConnector\Widgets\ITSmobile;
 use exface\Core\Formulas\Substitute;
 use exface\Core\Exceptions\Widgets\WidgetConfigurationError;
+use exface\SapConnector\Facades\ITSmobileProxyFacade;
+use exface\Core\Factories\FacadeFactory;
 
 /**
  * 
@@ -16,6 +18,8 @@ use exface\Core\Exceptions\Widgets\WidgetConfigurationError;
  */
 class UI5ITSmobile extends UI5AbstractElement
 {
+    private $proxyFacade = null;
+    
     public function buildJsConstructor($oControllerJs = 'oController') : string
     {
         $controller = $this->getController();
@@ -26,7 +30,7 @@ class UI5ITSmobile extends UI5AbstractElement
         
         $serviceUrl = $dataSource->getConnection()->getUrl();
         $baseUrl = StringDataType::substringBefore($serviceUrl, '/', false, true, true);
-        $proxyUrl = $this->getWorkbench()->getCMS()->buildUrlToApi() . '/api/itsmobileproxy/' .  $dataSourceAlias;
+        $proxyUrl = $this->getProxyFacade()->buildUrlToFacade() . '/' .  $dataSourceAlias;
         $serviceUrlWithProxy = $proxyUrl . '/?url=' . urlencode($serviceUrl);
         
         $this->registerITSmobileThemeIncludes($baseUrl, $proxyUrl);
@@ -301,5 +305,17 @@ JS;
 											
 JS;
         return $js;
+    }
+    
+    /**
+     * 
+     * @return ITSmobileProxyFacade
+     */
+    protected function getProxyFacade() : ITSmobileProxyFacade
+    {
+        if ($this->proxyFacade === null) {
+            $this->proxyFacade = FacadeFactory::createFromString(ITSmobileProxyFacade::class, $this->getWorkbench());
+        }
+        return $this->proxyFacade;
     }
 }
