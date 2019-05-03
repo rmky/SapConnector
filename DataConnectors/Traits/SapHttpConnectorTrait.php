@@ -63,7 +63,7 @@ trait SapHttpConnectorTrait
         
         $text = trim($response->getBody()->__toString());
         switch (true) {
-            case $response->getHeader('Content-Type')[0] === 'application/json':
+            case stripos($response->getHeader('Content-Type')[0], 'json') !== false:
                 $json = json_decode($text, true);
                 if ($errObj = $json['error']) {
                     if ($message = $errObj['message']['value']) {
@@ -72,14 +72,17 @@ trait SapHttpConnectorTrait
                 }
             default: 
                 try {
-                    if (mb_strtolower(substr($text, 0, 6)) === '<html>') {
-                        // If the response is HTML, get the <h1> tag
-                        $crawler = new Crawler($text);
-                        $message = $crawler->filter('h1')->text();
-                    } elseif (mb_strtolower(substr($text, 0, 5)) === '<?xml') {
-                        // If the response is XML, look for the <message> tag
-                        $crawler = new Crawler($text);
-                        $message = $crawler->filterXPath('//message')->text();
+                    switch (true) {
+                        case mb_strtolower(substr($text, 0, 6)) === '<html>':
+                            // If the response is HTML, get the <h1> tag
+                            $crawler = new Crawler($text);
+                            $message = $crawler->filter('h1')->text();
+                            break;
+                        case mb_strtolower(substr($text, 0, 5)) === '<?xml':
+                            // If the response is XML, look for the <message> tag
+                            $crawler = new Crawler($text);
+                            $message = $crawler->filterXPath('//message')->text();
+                            break;
                     }
                 } catch (\Throwable $e) {
                     $this->getWorkbench()->getLogger()->logException($e);
@@ -92,5 +95,16 @@ trait SapHttpConnectorTrait
         // Btw. strip_tags() did not work well as fallback, because it would also output
         // embedded CSS.
         return $message ?? $text;
+    }
+    
+    protected function getResponseErrorTextFromJson(string $jsonString) : ?string
+    {
+        $json = json_decode($jsonString, true);
+        if ($errObj = $json['error']) {
+            if ($message = $errObj['message']['value']) {
+                return $message;
+            }
+        }
+        return null;
     }
 }

@@ -25,3 +25,16 @@ Prefer good old battle-tested RFCs? There is a possibility to access plain old R
 ## SAP HANA ODBC connector
 
 If your are using SAP HANA, you can access it directly via native SQL. Choosing this option will speed up app development enormously, but it should only be used for custom data structures, that have no relation to SAP applications.
+
+## Use ITSmobile apps as a widget
+
+You can easily integrate existing ITSmobile applications into your app without even changing a thing in SAP. Simply 
+
+1. create an HTTP data source for the ITSmobile service
+2. Specify the URL and the desired authentication method in the corresponding connection and
+3. add the widget `exface.SapConnector.ITSmobile` anywhere in your app.
+
+When the widget is loaded, it will automatically log on to the ITSmobile service and show the entry screen - rendered using the look&feel of the template used for your app! Now you can use the ITSmobile application as allways - it will work inside the widget.
+
+**NOTE:** The widget `exface.SapConnector.ITSmobile` currently only works with the UI5 Facade.
+**NOTE:** At the moment, only the default ITSmobile theme 99 is supported.
