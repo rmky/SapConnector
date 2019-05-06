@@ -4,9 +4,6 @@ namespace exface\SapConnector\Facades\Elements;
 use exface\Core\DataTypes\StringDataType;
 use exface\Core\Factories\DataSourceFactory;
 use exface\UI5Facade\Facades\Elements\UI5AbstractElement;
-use exface\SapConnector\Widgets\ITSmobile;
-use exface\Core\Formulas\Substitute;
-use exface\Core\Exceptions\Widgets\WidgetConfigurationError;
 use exface\SapConnector\Facades\ITSmobileProxyFacade;
 use exface\Core\Factories\FacadeFactory;
 
@@ -14,7 +11,7 @@ use exface\Core\Factories\FacadeFactory;
  * 
  * @author rml
  *
- * @method ITSmobile getWidget()
+ * @method exface\SapConnector\Widgets\ITSmobile\ITSmobile getWidget()
  */
 class UI5ITSmobile extends UI5AbstractElement
 {
@@ -45,7 +42,23 @@ new sap.m.Page({
 		new sap.ui.core.HTML("{$this->getId()}", {
             content: "<div class=\"its-mobile-wrapper\" style=\"height: 100%; overflow: hidden; position: relative;\"></div>",
             afterRendering: function() { 
-                var content = $oControllerJs.{$controller->buildJsMethodName('getITSmobileContent', $this)}("$serviceUrlWithProxy");
+                // Render F-keys menu
+                oPopover = new sap.m.Popover("f-keys-menu-{$this->getId()}", {
+					title: "{$this->translate('WIDGET.ITSMOBILE.F_KEYS')}",
+					placement: "Top",
+					content: [
+						new sap.m.List({
+							items: [
+								{$this->buildJsFKeyListItems()}
+							]
+						})
+					]
+				})
+				//.setModel(oButton.getModel())
+				//.setModel(oButton.getModel('i18n'), 'i18n');
+
+                // load initial ITSmobile page
+                $oControllerJs.{$controller->buildJsMethodName('getITSmobileContent', $this)}("$serviceUrlWithProxy");
 			}
         })
 	],
@@ -60,23 +73,7 @@ new sap.m.Page({
                     layoutData: new sap.m.OverflowToolbarLayoutData({priority: "NeverOverflow"}),
                     press: function(oEvent){
 						var oButton = oEvent.getSource();
-						var oPopover = sap.ui.getCore().byId('f-keys-menu');
-						if (oPopover === undefined) {
-							oPopover = new sap.m.Popover("f-keys-menu", {
-								title: "{$this->translate('WIDGET.ITSMOBILE.F_KEYS')}",
-								placement: "Top",
-								content: [
-									new sap.m.List({
-										items: [
-											{$this->buildJsFKeyListItems()}
-										]
-									})
-								]
-							})
-							//.setModel(oButton.getModel())
-							//.setModel(oButton.getModel('i18n'), 'i18n');
-						}
-						
+						var oPopover = sap.ui.getCore().byId('f-keys-menu-{$this->getId()}');						
 						jQuery.sap.delayedCall(0, this, function () {
 							oPopover.openBy(oButton);
 						});
@@ -181,6 +178,23 @@ JS;
 						}
 					  });
 					$(button).replaceWith('<button class="sapMBtn sapMBtnBase" "'+btnProps+'"><span class="sapMBtnDefault sapMBtnHoverable sapMBtnInner sapMBtnText sapMFocusable"><span class="sapMBtnContent"><bdi>'+jqbutton.val()+'</bdi></span></span></button>');					
+
+                    // Update F-key menu with button descriptions
+                    var text = jqbutton.val();
+                    var fMatch = text.match(/f\d{1,2}/i);
+                    if (fMatch) {
+                        var fKey = fMatch[0];
+                        var fKeyDesc = text.replace(fKey, '').trim();
+                        var oFPopover = sap.ui.getCore().byId('f-keys-menu-{$this->getId()}');
+                        var aFListItems = oFPopover.getContent()[0].getItems();
+                        for (var i in aFListItems) {
+                            var oItem = aFListItems[i];
+                            if (oItem.getTitle() === fKey || oItem.getTitle().startsWith(fKey + ' ')) {
+                                oItem.setTitle(fKey + ' - ' + fKeyDesc);
+                                break;
+                            }
+                        }
+                    }
 				});
 				
 				// Transform Input Elements to new style
@@ -194,11 +208,15 @@ JS;
 				});
 				
 				jqhtml.find('.MobileCuaArea').hide();
-				$('.its-mobile-wrapper').html(jqhtml);			
+				$('.its-mobile-wrapper').html(jqhtml);		
+
+                // Give focus to first visible input element
+                $(".its-mobile-wrapper input[type!='hidden']:visible").first().focus();		
+					
 				
 				//unset busy, building view content finished
-				sap.ui.getCore().byId("{$this->getId()}").setBusy(false).setBusyIndicatorDelay(0);				
-				
+				sap.ui.getCore().byId("{$this->getId()}").setBusy(false).setBusyIndicatorDelay(0);		
+
 				//prevent default submit from form, instead call our function again
 				var form = document.forms["mobileform"];
 				var formHandler = form.onsubmit;
