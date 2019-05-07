@@ -384,4 +384,14 @@ class SapOpenSqlBuilder extends MySqlBuilder
         
         return $this->translateToOpenSQL($totals_query);
     }
+    
+    /**
+     * Comments seem to cause weired problems in OpenSQL - just remove them!
+     * 
+     * @see \exface\Core\QueryBuilders\AbstractSqlBuilder::buildSqlComment()
+     */
+    protected function buildSqlComment(string $text) : string
+    {
+        return '';
+    }
 }
