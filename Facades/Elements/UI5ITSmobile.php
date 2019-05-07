@@ -43,19 +43,21 @@ new sap.m.Page({
             content: "<div class=\"its-mobile-wrapper\" style=\"height: 100%; overflow: hidden; position: relative;\"></div>",
             afterRendering: function() { 
                 // Render F-keys menu
-                oPopover = new sap.m.Popover("f-keys-menu-{$this->getId()}", {
-					title: "{$this->translate('WIDGET.ITSMOBILE.F_KEYS')}",
-					placement: "Top",
-					content: [
-						new sap.m.List({
-							items: [
-								{$this->buildJsFKeyListItems()}
-							]
-						})
-					]
-				})
-				//.setModel(oButton.getModel())
-				//.setModel(oButton.getModel('i18n'), 'i18n');
+                if (! sap.ui.getCore().byId('f-keys-menu-{$this->getId()}')) {
+                    oPopover = new sap.m.Popover("f-keys-menu-{$this->getId()}", {
+    					title: "{$this->translate('WIDGET.ITSMOBILE.F_KEYS')}",
+    					placement: "Top",
+    					content: [
+    						new sap.m.List({
+    							items: [
+    								{$this->buildJsFKeyListItems()}
+    							]
+    						})
+    					]
+    				})
+    				//.setModel(oButton.getModel())
+    				//.setModel(oButton.getModel('i18n'), 'i18n');
+                }
 
                 // load initial ITSmobile page
                 $oControllerJs.{$controller->buildJsMethodName('getITSmobileContent', $this)}("$serviceUrlWithProxy");
