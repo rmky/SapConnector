@@ -203,7 +203,13 @@ JS;
 				jqhtml.find("input[type!='hidden']").each(function(){					
 					var jqinput = $(this);
 					var jqparent = jqinput.parent();
-					$(this).replaceWith('<div class="sapMInput sapMInputBase sapMInputBaseHeightMargin"><div class="sapMInputBaseContentWrapper"><div class="sapMInputBaseDynamicContent"></div></div></div>');
+                    var sSapMInputClasses = '';
+                    var ssapMInputBaseContentWrapperClasses = '';
+                    if (jqinput.attr('readonly')) {
+                        sSapMInputClasses += ' sapMInputBaseReadonly';
+                        ssapMInputBaseContentWrapperClasses += ' sapMInputBaseReadonlyWrapper';
+                    }
+					$(this).replaceWith('<div class="sapMInput sapMInputBase sapMInputBaseHeightMargin' + sSapMInputClasses + '"><div class="sapMInputBaseContentWrapper' + ssapMInputBaseContentWrapperClasses + '"><div class="sapMInputBaseDynamicContent"></div></div></div>');
 					jqinput.addClass('sapMInputBaseInner').appendTo(jqparent.find('.sapMInputBaseDynamicContent:last'));	
 					jqinput.parents('.sapMInput').css('width', jqinput.css('width'));
 					jqinput.css('width', '100%');
@@ -213,7 +219,7 @@ JS;
 				$('.its-mobile-wrapper').html(jqhtml);		
 
                 // Give focus to first visible input element
-                $(".its-mobile-wrapper input[type!='hidden']:visible").first().focus();		
+                $(".its-mobile-wrapper input[type!='hidden']:visible:not([readonly])").first().focus();		
 					
 				
 				//unset busy, building view content finished
