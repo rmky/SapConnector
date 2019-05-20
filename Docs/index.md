@@ -20,7 +20,7 @@ Prefer good old battle-tested RFCs? There is a possibility to access plain old R
 
 1. [Set up the webserivce in SAP NetWeaver](Connecting_via_RFC_webservice/setting_up_rfc_webservice.md)
 2. Set up a data source and a connection in the metamodel
-3. Import the WSDL into the metamodel
+3. [Create actions in the metamodel to call the RFC](Connecting_via_RFC_webservice/Modeling_RFC_actions.md)
 
 ## SAP HANA ODBC connector
 
