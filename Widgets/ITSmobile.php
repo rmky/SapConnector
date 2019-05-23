@@ -8,13 +8,20 @@ use exface\Core\Interfaces\DataSources\DataSourceInterface;
 use exface\Core\Factories\DataSourceFactory;
 use exface\UI5Facade\Facades\Elements\UI5AbstractElement;
 use exface\UI5Facade\Facades\UI5Facade;
-use exface\UI5Facade\Facades\Elements\UI5Panel;
 use exface\SapConnector\Facades\Elements\UI5ITSmobile;
 use exface\Core\CommonLogic\UxonObject;
 use exface\Core\Exceptions\Widgets\WidgetConfigurationError;
+use exface\Core\Interfaces\Widgets\iHaveContextualHelp;
+use exface\Core\Widgets\Traits\iHaveContextualHelpTrait;
 
-class ITSmobile extends AbstractWidget implements CustomWidgetInterface
+/**
+ * 
+ * @author Ralf Mulansky
+ *
+ */
+class ITSmobile extends AbstractWidget implements CustomWidgetInterface, iHaveContextualHelp
 {
+    use iHaveContextualHelpTrait ;
 
     private $dataSourceAlias = null;
     
@@ -146,5 +153,34 @@ class ITSmobile extends AbstractWidget implements CustomWidgetInterface
             throw new WidgetConfigurationError($this, 'Invalid F-Key "' . $keyWithF . '": F-Keys must start with an "F"!');
         }
         return substr($keyWithF, 1);
+    }
+    
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\Core\Widgets\AbstractWidget::getChildren()
+     */
+    public function getChildren() : \Iterator
+    {
+        foreach (parent::getChildren() as $child) {
+            yield $child;
+        }
+        
+        // Add the help button, so pages will be able to find it when dealing with the ShowHelpDialog action.
+        // IMPORTANT: Add the help button to the children only if it is not hidden. This is needed to hide the button in
+        // help widgets themselves, because otherwise they would produce their own help widgets, with - in turn - even
+        // more help widgets, resulting in an infinite loop.
+        if (! $this->getHideHelpButton()) {
+            yield $this->getHelpButton();
+        }
+    }
+    
+    /**
+     *
+     * @return string
+     */
+    private function getButtonWidgetType()
+    {
+        return 'Button';
     }
 }

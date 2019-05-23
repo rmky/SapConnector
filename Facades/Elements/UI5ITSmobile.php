@@ -6,6 +6,7 @@ use exface\Core\Factories\DataSourceFactory;
 use exface\UI5Facade\Facades\Elements\UI5AbstractElement;
 use exface\SapConnector\Facades\ITSmobileProxyFacade;
 use exface\Core\Factories\FacadeFactory;
+use exface\UI5Facade\Facades\Elements\Traits\UI5HelpButtonTrait;
 
 /**
  * 
@@ -15,6 +16,8 @@ use exface\Core\Factories\FacadeFactory;
  */
 class UI5ITSmobile extends UI5AbstractElement
 {
+    use UI5HelpButtonTrait;
+    
     private $proxyFacade = null;
     
     public function buildJsConstructor($oControllerJs = 'oController') : string
@@ -38,6 +41,9 @@ new sap.m.Page({
 	title: "{$this->getCaption()}",
 	showNavButton: true,
 	navButtonPress: [oController.onNavBack, oController],
+    headerContent: [
+        {$this->buildJsHelpButtonConstructor($oControllerJs)}
+    ],
 	content: [
 		new sap.ui.core.HTML("{$this->getId()}", {
             content: "<div class=\"its-mobile-wrapper\" style=\"height: 100%; overflow: hidden; position: relative;\"></div>",
