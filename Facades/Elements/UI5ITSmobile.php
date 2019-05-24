@@ -35,11 +35,13 @@ class UI5ITSmobile extends UI5AbstractElement
         
         $this->registerITSmobileThemeIncludes($baseUrl, $proxyUrl);
         
+        $showNavButton = $this->getView()->isWebAppRoot() ? 'false' : 'true';
+        
         return <<<JS
 
 new sap.m.Page({
 	title: "{$this->getCaption()}",
-	showNavButton: true,
+	showNavButton: {$showNavButton},
 	navButtonPress: [oController.onNavBack, oController],
     headerContent: [
         {$this->buildJsHelpButtonConstructor($oControllerJs)}
