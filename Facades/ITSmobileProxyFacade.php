@@ -88,7 +88,7 @@ class ITSmobileProxyFacade extends AbstractHttpFacade
         
         // Replace all URIs in the response with their proxy versions.
         $baseUrl = StringDataType::substringBefore($connection->getUrl(), '/', false, true, true);
-        $proxyUrl = $request->getUri()->withQuery('')->__toString();
+        $proxyUrl = $this->buildUrlToFacade() . '/' . $dataSourceSelector . '/';
         $responseBody = $this->replaceUrls($baseUrl, $proxyUrl, $responseBody);
         
         // Update the content-length header because all our transformation change the body

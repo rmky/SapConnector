@@ -8,11 +8,12 @@ use exface\Core\DataTypes\DateDataType;
 use exface\Core\DataTypes\StringDataType;
 use exface\Core\DataTypes\NumberDataType;
 use exface\UrlDataConnector\QueryBuilders\JsonUrlBuilder;
-use exface\Core\Interfaces\DataTypes\DataTypeInterface;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartAttribute;
 
 /**
  * Query builder for SAP oData services in JSON format.
+ * 
+ * See the AbstractUrlBuilder for information about available data address properties.
  * 
  * @author Andrej Kabachnik
  *

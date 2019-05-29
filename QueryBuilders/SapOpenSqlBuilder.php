@@ -17,6 +17,7 @@ use exface\Core\CommonLogic\DataQueries\SqlDataQuery;
 use exface\Core\DataTypes\NumberDataType;
 use exface\Core\CommonLogic\Model\Aggregator;
 use exface\Core\DataTypes\BooleanDataType;
+use exface\Core\Exceptions\QueryBuilderException;
 
 /**
  * SQL query builder for SAP OpenSQL
@@ -260,6 +261,7 @@ class SapOpenSqlBuilder extends MySqlBuilder
      */
     protected function buildSqlGroupByExpression(QueryPartAttribute $qpart, $sql, AggregatorInterface $aggregator){
         $function_name = $aggregator->getFunction()->getValue();
+        $args = $aggregator->getArguments();
         
         switch ($function_name) {
             case AggregatorFunctionsDataType::COUNT:
@@ -269,6 +271,13 @@ class SapOpenSqlBuilder extends MySqlBuilder
                 } else {
                     return 'COUNT( DISTINCT ' . $sql . ' )';
                 }
+            case AggregatorFunctionsDataType::COUNT_IF:
+                $cond = $args[0];
+                list($if_comp, $if_val) = explode(' ', $cond, 2);
+                if (!$if_comp || is_null($if_val)) {
+                    throw new QueryBuilderException('Invalid argument for COUNT_IF aggregator: "' . $cond . '"!', '6WXNHMN');
+                }
+                return "SUM( CASE WHEN " . $this->buildSqlWhereComparator($sql,  $if_comp, $if_val, $qpart->getAttribute()->getDataType()). " THEN 1 ELSE 0 END )";
             default:
                 return parent::buildSqlGroupByExpression($qpart, $sql, $aggregator);
         }
@@ -383,5 +392,15 @@ class SapOpenSqlBuilder extends MySqlBuilder
         $totals_query = "\n SELECT COUNT(*) AS EXFCNT" . ($totals_core_select ? ', ' . $totals_core_select : '') . ' FROM ' . $totals_from . $totals_join . $totals_where . $totals_group_by . $totals_having;
         
         return $this->translateToOpenSQL($totals_query);
+    }
+    
+    /**
+     * Comments seem to cause weired problems in OpenSQL - just remove them!
+     * 
+     * @see \exface\Core\QueryBuilders\AbstractSqlBuilder::buildSqlComment()
+     */
+    protected function buildSqlComment(string $text) : string
+    {
+        return '';
     }
 }
