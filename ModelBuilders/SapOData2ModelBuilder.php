@@ -112,9 +112,9 @@ class SapOData2ModelBuilder extends OData2ModelBuilder
     /**
      *
      * {@inheritDoc}
-     * @see \exface\UrlDataConnector\ModelBuilders\OData2ModelBuilder::findActionNodes($entity_nodes, $app, $data_source)
+     * @see \exface\UrlDataConnector\ModelBuilders\OData2ModelBuilder::findFunctionImports($entity_nodes, $app, $data_source)
      */
-    protected function findActionNodes(string $entityType) : Crawler
+    protected function findFunctionImports(string $entityType) : Crawler
     {
         return $this->getMetadata()->filterXPath('//default:FunctionImport[@sap:action-for="' . $this->getNamespace($entityType) . '.' . $entityType . '"]');
     }
