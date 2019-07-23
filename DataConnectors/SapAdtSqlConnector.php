@@ -145,8 +145,12 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
     {
         $headers = array_merge([
             'X-CSRF-Token' => $this->getCsrfToken(), 
-            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Cookie' => $this->getCsrfCookie()
         ], $headers);
+        if ($fixedParams = $this->getFixedUrlParams()) {
+            $url .= $fixedParams;
+        }
         $request = new Request($method, $url, $headers, $body);
         try {
             $response = $this->getClient()->send($request);
@@ -161,7 +165,14 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
             if ($e->getResponse()->getHeader('X-CSRF-Token')[0] === 'Required') {
                 $this->refreshCsrfToken();
                 $request = $request->withHeader('X-CSRF-Token', [$this->getCsrfToken()]);
-                $response = $this->getClient()->send($request);
+                try {
+                    $response = $this->getClient()->send($request);
+                } catch (RequestException $e) {
+                    $response = $response ?? $e->getResponse();
+                    $query = new Psr7DataQuery($request);
+                    $query->setResponse($response);
+                    throw $this->createResponseException($query, null, $e);
+                }
             } else {
                 throw $this->createResponseException($query, $response, $e);
             }

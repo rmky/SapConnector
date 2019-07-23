@@ -14,12 +14,17 @@ use Psr\Http\Message\ResponseInterface;
  * This token is then saved in the current user session and added to every request via the
  * `X-CSRF-Token` header.
  * 
+ * See https://a.kabachnik.info/how-to-use-sap-web-services-with-csrf-tokens-from-third-party-web-apps.html
+ * for more information about CSRF in SAP.
+ * 
  * @author Andrej Kabachnik
  *
  */
 trait CsrfTokenTrait
 {    
     private $csrfToken = null;
+    
+    private $csrfCookie = null;
     
     private $csrfRequestUrl = '';
     
@@ -40,6 +45,10 @@ trait CsrfTokenTrait
         return $this->csrfToken;
     }
     
+    /**
+     *
+     * @return string
+     */
     protected function getCsrfTokenContextVarName() : string
     {
         return 'csrf_token_' . $this->getCsrfRequestUrl();
@@ -58,6 +67,44 @@ trait CsrfTokenTrait
     }
     
     /**
+    *
+    * @return string
+    */
+    protected function getCsrfCookie() : string
+    {
+        if ($this->csrfCookie === null) {
+            $sessionCookie = $this->getWorkbench()->getApp('exface.SapConnector')->getContextVariable($this->getCsrfCookieContextVarName(), ContextManagerInterface::CONTEXT_SCOPE_SESSION);
+            if ($sessionCookie) {
+                $this->csrfCookie = $sessionCookie;
+            } else {
+                $this->refreshCsrfToken();
+            }
+        }
+        return $this->csrfCookie;
+    }
+    
+    /**
+     * 
+     * @return string
+     */
+    protected function getCsrfCookieContextVarName() : string
+    {
+        return 'csrf_cookie_' . $this->getCsrfRequestUrl();
+    }
+    
+    /**
+     *
+     * @param string $value
+     * @return HttpConnectionInterface
+     */
+    protected function setCsrfCookie(string $value) : HttpConnectionInterface
+    {
+        $this->csrfCookie = $value;
+        $this->getWorkbench()->getApp('exface.SapConnector')->setContextVariable($this->getCsrfCookieContextVarName(), $value, ContextManagerInterface::CONTEXT_SCOPE_SESSION);
+        return $this;
+    }
+    
+    /**
      *
      * @param bool $retryOnError
      * @throws RequestException
@@ -70,6 +117,7 @@ trait CsrfTokenTrait
         try {
             $response = $this->getClient()->get($this->getCsrfRequestUrl(), ['headers' => ['X-CSRF-Token' => 'Fetch']]);
             $token = $response->getHeader('X-CSRF-Token')[0];
+            $cookie = implode(';', $response->getHeader('Set-Cookie'));
         } catch (RequestException $e) {
             $response = $e->getResponse();
             // If there was an error, but there is no response (i.e. the error occurred before
@@ -78,6 +126,7 @@ trait CsrfTokenTrait
                 throw $e;
             }
             $token = $response->getHeader('X-CSRF-Token')[0];
+            $cookie = implode(';', $response->getHeader('Set-Cookie'));
         }
         
         // Sometimes, SAP returns a 401 error although the authentication is performed, so the same
@@ -97,6 +146,7 @@ trait CsrfTokenTrait
         }
         
         $this->setCsrfToken($token);
+        $this->setCsrfCookie($cookie);
         
         return $token;
     }
@@ -129,16 +179,6 @@ trait CsrfTokenTrait
     {
         $this->csrfRequestUrl = $urlRelativeToBase;
         return $this;
-    }
-    
-    /**
-     *
-     * {@inheritDoc}
-     * @see \exface\UrlDataConnector\DataConnectors\HttpConnector::getUseCookies()
-     */
-    public function getUseCookies()
-    {
-        return true;
     }
     
     /**
