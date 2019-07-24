@@ -6,6 +6,7 @@ use exface\Core\Exceptions\DataSources\DataConnectionFailedError;
 use exface\UrlDataConnector\Interfaces\HttpConnectionInterface;
 use exface\Core\Interfaces\Contexts\ContextManagerInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\RequestInterface;
 
 /**
  * This trait adds support for CSRF-tokens to an HTTP connector.
@@ -102,6 +103,31 @@ trait CsrfTokenTrait
         $this->csrfCookie = $value;
         $this->getWorkbench()->getApp('exface.SapConnector')->setContextVariable($this->getCsrfCookieContextVarName(), $value, ContextManagerInterface::CONTEXT_SCOPE_SESSION);
         return $this;
+    }
+    
+    /**
+     * 
+     * @return array
+     */
+    protected function getCsrfHeaders() : array
+    {
+        return [
+            'X-CSRF-Token' => $this->getCsrfToken(),
+            'Cookie' => $this->getCsrfCookie()
+        ];
+    }
+    
+    /**
+     * 
+     * @param RequestInterface $request
+     * @return RequestInterface
+     */
+    protected function addCsrfHeaders(RequestInterface $request) : RequestInterface
+    {
+        foreach ($this->getCsrfHeaders() as $name => $value) {
+            $request = $request->withHeader($name, $value);
+        }
+        return $request;
     }
     
     /**

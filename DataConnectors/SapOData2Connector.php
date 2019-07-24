@@ -47,7 +47,7 @@ class SapOData2Connector extends OData2Connector
             
         $request = $query->getRequest();
         if ($request->getMethod() !== 'GET' && $request->getMethod() !== 'OPTIONS') {
-            $query->setRequest($request->withHeader('X-CSRF-Token', $this->getCsrfToken()));
+            $query->setRequest($this->addCsrfHeaders($request));
         }
         
         try {
