@@ -217,8 +217,8 @@ JS;
                         sSapMInputClasses += ' sapMInputBaseReadonly';
                         ssapMInputBaseContentWrapperClasses += ' sapMInputBaseReadonlyWrapper';
                     }
-					$(this).replaceWith('<div class="sapMInput sapMInputBase sapMInputBaseHeightMargin' + sSapMInputClasses + '"><div class="sapMInputBaseContentWrapper' + ssapMInputBaseContentWrapperClasses + '"><div class="sapMInputBaseDynamicContent"></div></div></div>');
-					jqinput.addClass('sapMInputBaseInner').appendTo(jqparent.find('.sapMInputBaseDynamicContent:last'));	
+					$(this).replaceWith('<div class="sapMInput sapMInputBase sapMInputBaseHeightMargin' + sSapMInputClasses + '"><div class="sapMInputBaseContentWrapper' + ssapMInputBaseContentWrapperClasses + '"></div></div>');
+					jqinput.addClass('sapMInputBaseInner').appendTo(jqparent.find('.sapMInputBaseContentWrapper:last'));	
 					jqinput.parents('.sapMInput').css('width', jqinput.css('width'));
 					jqinput.css('width', '100%');
 				});
