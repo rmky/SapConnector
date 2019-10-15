@@ -29,7 +29,7 @@ class UI5ITSmobile extends UI5AbstractElement
         $dataSource = DataSourceFactory::createFromModel($this->getWorkbench(), $dataSourceAlias);
         
         $serviceUrl = $dataSource->getConnection()->getUrl();
-        $baseUrl = StringDataType::substringBefore($serviceUrl, '/', false, true, true);
+        $baseUrl = $dataSource->getConnection()->getUrlServerRoot();
         $proxyUrl = $this->getProxyFacade()->buildUrlToFacade() . '/' .  $dataSourceAlias;
         $serviceUrlWithProxy = $proxyUrl . '/?url=' . urlencode($serviceUrl);
         
@@ -129,7 +129,11 @@ JS;
 				url: $urlJs,
 				data: $bodyJs
 			//when Ajax request got response transform response style to new style	
-			}).done(function(data) { 
+			})
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                oController.getOwnerComponent().showAjaxErrorDialog(jqXHR)
+            })
+            .done(function(data, textStatus, jqXHR) { 
 				var jqhtml = $(data);
 				jqhtml.find('.MobileLabel').addClass('sapMLabel');				
 				

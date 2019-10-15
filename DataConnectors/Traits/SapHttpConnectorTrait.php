@@ -15,6 +15,11 @@ trait SapHttpConnectorTrait
 {    
     private $sapClient = null;
     
+    private $htmlErrorTextSelectors = [
+        'h1', // generic NetWeaver errors
+        '.errorTextHeader' // ITSmobile and older services errors
+    ];
+    
     /**
      *
      * @return string|NULL
@@ -76,7 +81,7 @@ trait SapHttpConnectorTrait
                         case mb_strtolower(substr($text, 0, 6)) === '<html>':
                             // If the response is HTML, get the <h1> tag
                             $crawler = new Crawler($text);
-                            $message = $crawler->filter('h1')->text();
+                            $message = $this->getResponseErrorTextFromHtml($crawler);
                             break;
                         case mb_strtolower(substr($text, 0, 5)) === '<?xml':
                             // If the response is XML, look for the <message> tag
@@ -95,6 +100,18 @@ trait SapHttpConnectorTrait
         // Btw. strip_tags() did not work well as fallback, because it would also output
         // embedded CSS.
         return $message ?? $text;
+    }
+    
+    protected function getResponseErrorTextFromHtml(Crawler $crawler, string $cssSelector = null) : ?string
+    {
+        $selectors = $cssSelector !== null ? [$cssSelector] : $this->htmlErrorTextSelectors;
+        foreach ($selectors as $selector) {
+            $nodes = $crawler->filter($selector);
+            if ($nodes->count() > 0 && $message = $nodes->text()) {
+                return $message;
+            }
+        }
+        return $message;
     }
     
     protected function getResponseErrorTextFromJson(string $jsonString) : ?string

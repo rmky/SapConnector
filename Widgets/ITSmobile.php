@@ -30,9 +30,9 @@ use exface\Core\Interfaces\Widgets\iFillEntireContainer;
  * and SAP. All web requests are routed through this proxy, which also takes care of
  * authentication, CORS, etc.
  * 
- * To use this widget, you will need a separate data source for every ITSmobile app: 
+ * To use this widget, you will need a separate data source for every ITSmobile app with: 
  * 
- * - with any HTTP connection (e.g. the generic `HttpConnector` or even an existing OData-connection)
+ * - the `SapITSmobileConnector`, where the `url` points to the ITSmobile web service,
  * - the `DummyQueryBuilder`
  * 
  * You will also need a dummy meta object because every widget requires a meta object. In fact, you 

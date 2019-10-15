@@ -43,15 +43,10 @@ class ITSmobileProxyFacade extends AbstractHttpFacade
         }
         
         $method = $request->getMethod();
-        $requestHeaders = $request->getHeaders();
-        $requestHeaders['Accept'][0] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3';
-        $requestHeaders['Accept-Language'][0] = $this->getWorkbench()->getContext()->getScopeSession()->getSessionLocale();
-        $requestHeaders['Cache-Control'][0] = 'no-cache';
-        $requestHeaders['Pragma'][0] = 'no-cache';
-        
         $uri = $request->getUri();
-        
+        $body = $request->getBody()->__toString();
         $url = $request->getQueryParams()['url'];
+        
         $pathParts = explode('/', StringDataType::substringAfter($uri->getPath(), 'api/itsmobileproxy/'));
         $dataSourceSelector = $pathParts[0];
         if (! $url && $pathParts[1] === 'url') {
@@ -74,20 +69,36 @@ class ITSmobileProxyFacade extends AbstractHttpFacade
             throw new RuntimeException('todo..');
         }
         
-        $fwRequest = new Request($method, $url, $requestHeaders, $request->getBody()->__toString());
-        $queryResult = $connection->query(new Psr7DataQuery($fwRequest));
-        $result = $queryResult->getResponse();
+        $requestHeaders = [];
+        $requestHeaders['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3';
+        $requestHeaders['Accept-Encoding'] = 'gzip, deflate';
+        $requestHeaders['Accept-Language'] = $this->getWorkbench()->getContext()->getScopeSession()->getSessionLocale();
+        $requestHeaders['Connection'] = 'keep-alive';
+        $requestHeaders['Cache-Control'] = 'no-cache';
+        $requestHeaders['Pragma'] = 'no-cache';
+        $requestHeaders['Origin'] = $connection->getUrlServerRoot();
+        $requestHeaders['Referer'] = $connection->getUrl();
+        $requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+        $requestHeaders['Accept-Language'] = 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7,ru;q=0.6,da;q=0.5,lb;q=0.4,fy;q=0.3';
+        $requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+        $requestHeaders['Content-Length'] = strlen($body);
         
-        $responseHeaders = $result->getHeaders();
+        //$requestHeaders['Cookie'] = 'sap-usercontext=sap-language=DE&sap-client=020; SAP_SESSIONID_EW1_020=TNth91DB8QPWXaq9RXgXhHmdju3vXBHpgM0AUFa-xsg%3d';
+        
+        $fwRequest = new Request($method, $url, $requestHeaders, $body);
+        $queryResult = $connection->query(new Psr7DataQuery($fwRequest));
+        $fwResponse = $queryResult->getResponse();
+        
+        $responseHeaders = $fwResponse->getHeaders();
         unset($responseHeaders['Transfer-Encoding']);
         
-        $responseBody = $result->getBody()->__toString();
+        $responseBody = $fwResponse->getBody()->__toString();
         
         // Do theme-specific transformations
         $responseBody = $this->processITSmobileTheme($url, $responseBody);        
         
         // Replace all URIs in the response with their proxy versions.
-        $baseUrl = StringDataType::substringBefore($connection->getUrl(), '/', false, true, true);
+        $baseUrl = $connection->getUrlServerRoot();
         $proxyUrl = $this->buildUrlToFacade() . '/' . $dataSourceSelector . '/';
         $responseBody = $this->replaceUrls($baseUrl, $proxyUrl, $responseBody);
         
@@ -95,7 +106,7 @@ class ITSmobileProxyFacade extends AbstractHttpFacade
         $responseHeaders['content-length'][0] = mb_strlen($responseBody);
         
         // Send the transformed response.
-        $response = new Response($result->getStatusCode(), $responseHeaders, $responseBody, $result->getProtocolVersion(), $result->getReasonPhrase());
+        $response = new Response($fwResponse->getStatusCode(), $responseHeaders, $responseBody, $fwResponse->getProtocolVersion(), $fwResponse->getReasonPhrase());
         
         return $response;
     }
