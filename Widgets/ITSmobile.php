@@ -26,7 +26,7 @@ use exface\Core\Interfaces\Widgets\iFillEntireContainer;
  * remote control for the ITSmobile app and a visual transformation layer to make the app
  * look and feel as an integral part of the facade. 
  * 
- * Under the hood, the `ÌTSmobileProxyFacade` is used as middleware between the web browser
+ * Under the hood, the `ITSmobileProxyFacade` is used as middleware between the web browser
  * and SAP. All web requests are routed through this proxy, which also takes care of
  * authentication, CORS, etc.
  * 
