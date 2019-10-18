@@ -135,20 +135,4 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
         }
         return false;
     }
-    
-    /**
-     * 
-     * {@inheritdoc}
-     * @see OData2JsonUrlBuilder::buildODataValue()
-     */
-    protected function buildODataValue(QueryPartAttribute $qpart, $preformattedValue = null)
-    {
-        switch ($qpart->getAttribute()->getDataAddressProperty('odata_type')) {
-            case 'Edm.DateTime':
-                $date = new \DateTime(str_replace("'", '', $preformattedValue));
-                return "/Date(" . $date->format('U') . "000)/";
-            default:
-                return parent::buildODataValue($qpart, $preformattedValue);
-        }
-    }
 }
