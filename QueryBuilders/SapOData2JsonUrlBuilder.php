@@ -33,11 +33,10 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
             case EXF_COMPARATOR_IS:
                 // SAP NetWeaver produces a 500-error on substringof() eq true - need to remove the "eq true".
                 switch (true) {
-                    case $type instanceof NumberDataType:
-                    case $type instanceof DateDataType:
-                        return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
-                    default:
+                    case $type instanceof StringDataType:
                         return "substringof({$escapedValue}, {$property})";
+                    default:
+                        return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
                 } 
             default:
                 return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
