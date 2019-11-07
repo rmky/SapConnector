@@ -28,13 +28,16 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
     protected function buildUrlFilterPredicate(QueryPartFilter $qpart, string $property, string $escapedValue) : string
     {
         $comp = $qpart->getComparator();
+        $type = $qpart->getDataType();
         switch ($comp) {
             case EXF_COMPARATOR_IS:
                 // SAP NetWeaver produces a 500-error on substringof() eq true - need to remove the "eq true".
-                if ($qpart->getDataType() instanceof NumberDataType) {
-                    return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
-                } else {
-                    return "substringof({$escapedValue}, {$property})";
+                switch (true) {
+                    case $type instanceof NumberDataType:
+                    case $type instanceof DateDataType:
+                        return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
+                    default:
+                        return "substringof({$escapedValue}, {$property})";
                 } 
             default:
                 return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
