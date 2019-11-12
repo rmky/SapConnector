@@ -9,6 +9,8 @@ use exface\Core\DataTypes\StringDataType;
 use exface\Core\DataTypes\NumberDataType;
 use exface\UrlDataConnector\QueryBuilders\JsonUrlBuilder;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartAttribute;
+use exface\Core\Exceptions\QueryBuilderException;
+use exface\Core\DataTypes\TimestampDataType;
 
 /**
  * Query builder for SAP oData services in JSON format.
@@ -40,6 +42,37 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
                 } 
             default:
                 return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
+        }
+    }
+    
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \exface\UrlDataConnector\QueryBuilders\OData2JsonUrlBuilder::buildUrlFilterValue($qpart, $preformattedValue)
+     */
+    protected function buildUrlFilterValue(QueryPartFilter $qpart, string $preformattedValue = null)
+    {
+        try {
+            return parent::buildUrlFilterValue($qpart, $preformattedValue);
+        } catch (QueryBuilderException $e) {
+            // There are cases, when SAP OData services accept special values, that are not
+            // valid for their data types, but are still meaningfull for SAP
+            $type = $qpart->getDataType();
+            $val = $preformattedValue ?? trim($qpart->getCompareValue());
+            switch (true) {
+                // Date filters can have the value '0000000', which is equivalent to empty.
+                case $type instanceof DateDataType:
+                case $type instanceof TimestampDataType:
+                    // Date filters can have the value '0000000', which is equivalent to empty.
+                    if (is_numeric($val) && intval($val) === 0) {
+                        return $this->buildUrlFilterValueEscapedString($qpart, $val);
+                    }
+                // IDEA other types may also use '0000000' in various length as empty value,
+                // add them here if so.
+                default:
+                    // Just rethrow the error if no special SAP-handling helped!
+                    throw $e;
+            }
         }
     }
     
