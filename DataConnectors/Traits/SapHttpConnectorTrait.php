@@ -4,6 +4,8 @@ namespace exface\SapConnector\DataConnectors\Traits;
 use Symfony\Component\DomCrawler\Crawler;
 use Psr\Http\Message\ResponseInterface;
 use exface\UrlDataConnector\DataConnectors\HttpConnector;
+use exface\UrlDataConnector\Exceptions\HttpConnectorRequestError;
+use exface\UrlDataConnector\Psr7DataQuery;
 
 /**
  * This trait adds support sap-client URL params and other SAP specifics to an HttpConnector.
@@ -14,6 +16,8 @@ use exface\UrlDataConnector\DataConnectors\HttpConnector;
 trait SapHttpConnectorTrait
 {    
     private $sapClient = null;
+    
+    private $lastErrorHadMeaningfulTitle = false;
     
     private $htmlErrorTextSelectors = [
         'h1', // generic NetWeaver errors
@@ -60,39 +64,35 @@ trait SapHttpConnectorTrait
     
     /**
      *
+     * {@inheritdoc}
      * @see HttpConnector::getResponseErrorText()
      */
     protected function getResponseErrorText(ResponseInterface $response, \Throwable $exceptionThrown = null) : string
     {
         $message = null;
-        
+        $this->lastErrorHadMeaningfulTitle = false;
         $text = trim($response->getBody()->__toString());
-        switch (true) {
-            case stripos($response->getHeader('Content-Type')[0], 'json') !== false:
-                $json = json_decode($text, true);
-                if ($errObj = $json['error']) {
-                    if ($message = $errObj['message']['value']) {
+        try {
+            switch (true) {
+                case stripos($response->getHeader('Content-Type')[0], 'json') !== false:
+                    if ($message = $this->getResponseErrorTextFromJson(trim($text))) {
+                        $this->lastErrorHadMeaningfulTitle = true;
                         break;
                     }
-                }
-            default: 
-                try {
-                    switch (true) {
-                        case mb_strtolower(substr($text, 0, 6)) === '<html>':
-                            // If the response is HTML, get the <h1> tag
-                            $crawler = new Crawler($text);
-                            $message = $this->getResponseErrorTextFromHtml($crawler);
-                            break;
-                        case mb_strtolower(substr($text, 0, 5)) === '<?xml':
-                            // If the response is XML, look for the <message> tag
-                            $crawler = new Crawler($text);
-                            $message = $crawler->filterXPath('//message')->text();
-                            break;
-                    }
-                } catch (\Throwable $e) {
-                    $this->getWorkbench()->getLogger()->logException($e);
-                    // Ignore errors
-                }
+                case stripos($response->getHeader('Content-Type')[0], 'html') !== false || mb_strtolower(substr($text, 0, 6)) === '<html>':
+                    // If the response is HTML, get the <h1> tag
+                    $crawler = new Crawler($text);
+                    $message = $this->getResponseErrorTextFromHtml($crawler);
+                    break;
+                case stripos($response->getHeader('Content-Type')[0], 'xml') !== false || mb_strtolower(substr($text, 0, 5)) === '<?xml':
+                    // If the response is XML, look for the <message> tag
+                    $crawler = new Crawler($text);
+                    $message = $crawler->filterXPath('//message')->text();
+                    break;
+            }
+        } catch (\Throwable $e) {
+            $this->getWorkbench()->getLogger()->logException($e);
+            // Ignore errors
         }
         
         
@@ -123,5 +123,18 @@ trait SapHttpConnectorTrait
             }
         }
         return null;
+    }
+    
+    /**
+     * {@inheritdoc}
+     * @see HttpConnector::createResponseException()
+     */
+    protected function createResponseException(Psr7DataQuery $query, ResponseInterface $response = null, \Throwable $exceptionThrown = null)
+    {
+        $exception = parent::createResponseException($query, $response, $exceptionThrown);
+        if ($this->lastErrorHadMeaningfulTitle && $exception instanceof HttpConnectorRequestError) {
+            $exception->setUseRemoteMessageAsTitle(true);
+        }
+        return $exception;
     }
 }
