@@ -27,7 +27,7 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
      * {@inheritdoc}
      * @see OData2JsonUrlBuilder::buildUrlFilterPredicate
      */
-    protected function buildUrlFilterPredicate(QueryPartFilter $qpart, string $property, string $escapedValue) : string
+    protected function buildUrlFilterPredicate(QueryPartFilter $qpart, string $property, string $preformattedValue = null) : string
     {
         $comp = $qpart->getComparator();
         $type = $qpart->getDataType();
@@ -36,12 +36,13 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
                 // SAP NetWeaver produces a 500-error on substringof() eq true - need to remove the "eq true".
                 switch (true) {
                     case $type instanceof StringDataType:
+                        $escapedValue = $preformattedValue ?? $this->buildUrlFilterValue($qpart);
                         return "substringof({$escapedValue}, {$property})";
                     default:
-                        return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
+                        return parent::buildUrlFilterPredicate($qpart, $property, $preformattedValue);
                 } 
             default:
-                return parent::buildUrlFilterPredicate($qpart, $property, $escapedValue);
+                return parent::buildUrlFilterPredicate($qpart, $property, $preformattedValue);
         }
     }
     
