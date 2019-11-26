@@ -201,6 +201,16 @@ class SapAdtSqlConnector extends HttpConnector implements SqlDataConnectorInterf
         $query->setSql($string);
         return $this->query($query);
     }
+    
+    /**
+     *
+     * {@inheritDoc}
+     * @see \exface\Core\Interfaces\DataSources\TextualQueryConnectorInterface::runCustomQuery()
+     */
+    public function runCustomQuery(string $string) : DataQueryInterface
+    {
+        return $this->runSql($string);
+    }
 
     public function freeResult(SqlDataQuery $query)
     {
