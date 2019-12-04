@@ -65,7 +65,7 @@ class SapOData2JsonUrlBuilder extends OData2JsonUrlBuilder
                     // In ABAP and empty date is something like '0000000'. To make it possible to enter
                     // this type of value in an OData date filter, we need to transform it to the below
                     // value. Same goes for the ExFace-internal zero-date value "0000-00-00".
-                    if ((is_numeric($val) && intval($val) === 0) || StringDataType::start($val, '0000-00-00') === true) {
+                    if ((is_numeric($val) && intval($val) === 0) || StringDataType::startsWith($val, '0000-00-00') === true) {
                         return "datetime'0000-00-00T00:00'";
                     }
                 // IDEA other types may also use '0000000' in various length as empty value,
