@@ -47,7 +47,7 @@ class ITSmobileProxyFacade extends AbstractHttpFacade
         
         // See if the request passes security middleware. If not, return the generated error.
         $handler = new HttpRequestHandler(new OKHandler());
-        $handler->add(new AuthenticationMiddleware($this->getWorkbench()));
+        $handler->add(new AuthenticationMiddleware($this));
         $responseTpl = $handler->handle($request);
         if ($responseTpl->getStatusCode() >= 400) {
             return $responseTpl;
