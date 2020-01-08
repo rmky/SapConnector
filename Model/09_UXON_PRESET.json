@@ -78,6 +78,34 @@
             "UXON": "{\"url\":\"\",\"sap_client\":\"\",\"user\":\"\",\"password\":\"\"}",
             "WRAP_PATH": "",
             "UXON_SCHEMA": "connection"
+        },
+        {
+            "CREATED_ON": "2020-01-08 19:36:41",
+            "MODIFIED_ON": "2020-01-08 19:36:41",
+            "CREATED_BY_USER": "0x31000000000000000000000000000000",
+            "MODIFIED_BY_USER": "0x31000000000000000000000000000000",
+            "UID": "0x11ea324df24c17e89442e4b318306b9a",
+            "APP": "0x11e85942dc57e3ac99340205857feb80",
+            "NAME": "SAP OData Credentials with CLIENT",
+            "DESCRIPTION": "Credential set for SAP OData connections with a user-specific client id",
+            "PROTOTYPE": "exface\/SapConnector\/DataConnectors\/SapOData2Connector.php",
+            "UXON": "{\"sap_client\":\"\",\"user\":\"\",\"password\":\"\"}",
+            "WRAP_PATH": "",
+            "UXON_SCHEMA": "connection"
+        },
+        {
+            "CREATED_ON": "2020-01-08 19:37:12",
+            "MODIFIED_ON": "2020-01-08 19:37:12",
+            "CREATED_BY_USER": "0x31000000000000000000000000000000",
+            "MODIFIED_BY_USER": "0x31000000000000000000000000000000",
+            "UID": "0x11ea324e0516b4f09442e4b318306b9a",
+            "APP": "0x11e85942dc57e3ac99340205857feb80",
+            "NAME": "SAP OData Credentials",
+            "DESCRIPTION": "Credential set for SAP OData connections with basic HTTP authentication",
+            "PROTOTYPE": "exface\/SapConnector\/DataConnectors\/SapOData2Connector.php",
+            "UXON": "{\"user\":\"\",\"password\":\"\"}",
+            "WRAP_PATH": "",
+            "UXON_SCHEMA": "connection"
         }
     ],
     "totals_rows": [],
