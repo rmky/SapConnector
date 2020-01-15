@@ -157,10 +157,10 @@ class SapOpenSqlBuilder extends MySqlBuilder
     {
         switch ($comparator) {
             case EXF_COMPARATOR_IS_NOT:
-                $output = $subject . " NOT LIKE '%" . $this->prepareWhereValue($value, $data_type) . "%'";
+                $output = $subject . " NOT LIKE '%" . $this->escapeString($value) . "%'";
                 break;
             case EXF_COMPARATOR_IS:
-                $output = $subject . " LIKE '%" . $this->prepareWhereValue($value, $data_type) . "%'";
+                $output = $subject . " LIKE '%" . $this->escapeString($value) . "%'";
                 break;
             default:
                 $output = parent::buildSqlWhereComparator($subject, $comparator, $value, $data_type);
