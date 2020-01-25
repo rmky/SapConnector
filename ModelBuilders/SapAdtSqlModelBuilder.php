@@ -219,7 +219,7 @@ class SapAdtSqlModelBuilder extends AbstractSqlModelBuilder
             'APP__ALIAS',
             'ALIAS'
         ]);
-        $ds->addFilterFromString($ds->getMetaObject()->getUidAttributeAlias(), $this->getDataTypeId($type), EXF_COMPARATOR_EQUALS);
+        $ds->getFilters()->addConditionFromString($ds->getMetaObject()->getUidAttributeAlias(), $this->getDataTypeId($type), EXF_COMPARATOR_EQUALS);
         $ds->dataRead();
         foreach ($data as $col => $val) {
             $ds->setCellValue($col, 0, $val);
@@ -382,7 +382,7 @@ SQL;
     protected function updateAttribute(MetaAttributeInterface $attr, array $data) : int
     {
         $ds = DataSheetFactory::createFromObjectIdOrAlias($attr->getWorkbench(), 'exface.Core.ATTRIBUTE');
-        $ds->addFilterFromString($ds->getMetaObject()->getUidAttributeAlias(), $attr->getId());
+        $ds->getFilters()->addConditionFromString($ds->getMetaObject()->getUidAttributeAlias(), $attr->getId());
         $ds->getColumns()->addFromSystemAttributes();
         $ds->getColumns()->addMultiple([
             'UID',
