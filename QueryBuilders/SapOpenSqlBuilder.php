@@ -8,7 +8,6 @@ use exface\Core\DataTypes\DateDataType;
 use exface\Core\DataTypes\DateTimeDataType;
 use exface\Core\DataTypes\TimeDataType;
 use exface\Core\Interfaces\Model\MetaAttributeInterface;
-use exface\Core\DataTypes\StringDataType;
 use exface\Core\DataTypes\AggregatorFunctionsDataType;
 use exface\Core\CommonLogic\QueryBuilder\QueryPartAttribute;
 use exface\Core\Interfaces\Model\AggregatorInterface;
@@ -22,7 +21,12 @@ use exface\Core\Exceptions\QueryBuilderException;
 /**
  * SQL query builder for SAP OpenSQL
  *
- * This query builder is based on the MySQL syntax, which is similar.
+ * This query builder is based on the MySQL syntax, which is similar - see `MySqlBuilder` and
+ * `AbstractSqlBuilder` for details and available configuration options.
+ * 
+ * ## Known issues
+ * 
+ * Attribute aliases MUST be uppercase - otherwise the data cannot be read!
  *
  * @author Andrej Kabachnik
  *        
